@@ -95,7 +95,7 @@ export function DashboardView({ onNavigate }: DashboardViewProps = {}) {
           .select('*', { count: 'exact' }),
       ]);
 
-      const openCount = ticketsRes.data?.filter((t) => t.status === 'open' || t.status === 'scheduled').length || 0;
+      const openCount = ticketsRes.data?.filter((t) => t.status === 'open').length || 0;
 
       const lowStockCount = partsRes.data?.filter((part: any) =>
         part.quantity_on_hand < part.reorder_level
