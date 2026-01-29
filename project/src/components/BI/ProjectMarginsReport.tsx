@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Percent } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -197,9 +198,122 @@ export function ProjectMarginsReport() {
         })}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Revenue vs Costs by Project
+          </h2>
+          <div className="h-80">
+            {metrics.projects.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={metrics.projects.slice(0, 8).map(p => ({
+                    name: p.name.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
+                    revenue: p.revenue,
+                    costs: p.costs,
+                    profit: p.profit,
+                  }))}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    fontSize={11}
+                    tickLine={false}
+                    angle={-20}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`]}
+                  />
+                  <Legend />
+                  <Bar dataKey="revenue" name="Revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="costs" name="Costs" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No project data for selected period
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Margin by Project
+          </h2>
+          <div className="h-80">
+            {metrics.projects.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={metrics.projects.slice(0, 8).map(p => ({
+                    name: p.name.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
+                    margin: parseFloat(p.margin.toFixed(1)),
+                  }))}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    fontSize={11}
+                    tickLine={false}
+                    angle={-20}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`${value}%`, 'Margin']}
+                  />
+                  <Bar dataKey="margin" name="Margin %" radius={[4, 4, 0, 0]}>
+                    {metrics.projects.slice(0, 8).map((project, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={project.margin >= 20 ? '#10B981' : project.margin >= 10 ? '#F59E0B' : '#EF4444'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No project data for selected period
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="card p-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Project Financial Overview
+          Project Financial Details
         </h2>
         <div className="overflow-x-auto">
           {metrics.projects.length > 0 ? (

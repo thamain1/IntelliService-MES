@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Clock, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -211,11 +212,63 @@ export function DSOInsight() {
         })}
       </div>
 
-      <div className="card p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          AR Aging Analysis
-        </h2>
-        <div className="overflow-x-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            AR Aging Distribution
+          </h2>
+          <div className="h-80">
+            {metrics.agingBuckets.some(b => b.amount > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={metrics.agingBuckets}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="label"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
+                  />
+                  <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                    {metrics.agingBuckets.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={['#10B981', '#3B82F6', '#F59E0B', '#F97316', '#EF4444'][index]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No aging data available
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            AR Aging Details
+          </h2>
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -259,6 +312,7 @@ export function DSOInsight() {
               })}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 

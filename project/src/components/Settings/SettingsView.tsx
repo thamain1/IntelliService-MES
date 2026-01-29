@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Users, Building } from 'lucide-react';
 import { UserManagement } from './UserManagement';
+import { CompanySettings } from './CompanySettings';
 
 export function SettingsView() {
   const [activeTab, setActiveTab] = useState<'users' | 'company'>('users');
@@ -41,19 +42,7 @@ export function SettingsView() {
         </div>
       </div>
 
-      {activeTab === 'users' ? (
-        <UserManagement />
-      ) : (
-        <div className="card p-8 text-center">
-          <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Company Settings
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            Company configuration options coming soon
-          </p>
-        </div>
-      )}
+      {activeTab === 'users' ? <UserManagement /> : <CompanySettings />}
     </div>
   );
 }

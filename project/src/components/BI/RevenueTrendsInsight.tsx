@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { TrendingUp, DollarSign, BarChart3, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, DollarSign, ArrowUp, ArrowDown } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -13,6 +14,12 @@ interface RevenueMetrics {
   avgInvoiceValue: number;
 }
 
+interface DailyRevenue {
+  date: string;
+  revenue: number;
+  invoiceCount: number;
+}
+
 export function RevenueTrendsInsight() {
   const { dateRange, setDateRange, start, end } = useBIDateRange();
   const [metrics, setMetrics] = useState<RevenueMetrics>({
@@ -21,6 +28,7 @@ export function RevenueTrendsInsight() {
     percentChange: 0,
     avgInvoiceValue: 0,
   });
+  const [dailyRevenue, setDailyRevenue] = useState<DailyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,6 +72,33 @@ export function RevenueTrendsInsight() {
         percentChange,
         avgInvoiceValue,
       });
+
+      // Fetch daily revenue data for chart
+      const { data: dailyData } = await supabase
+        .from('invoices')
+        .select('invoice_date, total')
+        .gte('invoice_date', start.toISOString())
+        .lte('invoice_date', end.toISOString())
+        .order('invoice_date', { ascending: true });
+
+      // Group by date
+      const dailyMap = new Map<string, { revenue: number; count: number }>();
+      dailyData?.forEach((inv) => {
+        const date = new Date(inv.invoice_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const existing = dailyMap.get(date) || { revenue: 0, count: 0 };
+        dailyMap.set(date, {
+          revenue: existing.revenue + (inv.total || 0),
+          count: existing.count + 1,
+        });
+      });
+
+      const chartData: DailyRevenue[] = Array.from(dailyMap.entries()).map(([date, data]) => ({
+        date,
+        revenue: data.revenue,
+        invoiceCount: data.count,
+      }));
+
+      setDailyRevenue(chartData);
     } catch (error) {
       console.error('Error loading revenue trends:', error);
     } finally {
@@ -167,17 +202,98 @@ export function RevenueTrendsInsight() {
         })}
       </div>
 
-      <div className="card p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Revenue Trend Line
-        </h2>
-        <div className="bg-gray-200 dark:bg-gray-700 rounded-lg aspect-video flex items-center justify-center">
-          <div className="text-center">
-            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600 dark:text-gray-400">Chart Visualization</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-              Revenue over time with trend analysis
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Revenue Trend
+          </h2>
+          <div className="h-80">
+            {dailyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dailyRevenue} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3B82F6"
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No revenue data for selected period
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Daily Invoice Count
+          </h2>
+          <div className="h-80">
+            {dailyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyRevenue} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [value, 'Invoices']}
+                  />
+                  <Bar dataKey="invoiceCount" fill="#10B981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No invoice data for selected period
+              </div>
+            )}
           </div>
         </div>
       </div>

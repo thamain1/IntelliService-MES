@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { DollarSign, TrendingUp, AlertCircle, Clock, BarChart3 } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, Clock } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -14,6 +15,11 @@ interface FinancialsMetrics {
   overdueAmount: number;
 }
 
+interface DailyRevenue {
+  date: string;
+  revenue: number;
+}
+
 export function FinancialsReport() {
   const { dateRange, setDateRange, start, end } = useBIDateRange();
   const [metrics, setMetrics] = useState<FinancialsMetrics>({
@@ -23,6 +29,7 @@ export function FinancialsReport() {
     overdueCount: 0,
     overdueAmount: 0,
   });
+  const [dailyRevenue, setDailyRevenue] = useState<DailyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +70,21 @@ export function FinancialsReport() {
         overdueCount: overdueInvoices.length,
         overdueAmount,
       });
+
+      // Group by date for chart
+      const dailyMap = new Map<string, number>();
+      invoices?.forEach((inv) => {
+        const date = new Date(inv.invoice_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const existing = dailyMap.get(date) || 0;
+        dailyMap.set(date, existing + (inv.total || 0));
+      });
+
+      const chartData: DailyRevenue[] = Array.from(dailyMap.entries()).map(([date, revenue]) => ({
+        date,
+        revenue,
+      }));
+
+      setDailyRevenue(chartData);
     } catch (error) {
       console.error('Error loading financials:', error);
     } finally {
@@ -167,17 +189,106 @@ export function FinancialsReport() {
         })}
       </div>
 
-      <div className="card p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Revenue Over Time
-        </h2>
-        <div className="bg-gray-200 dark:bg-gray-700 rounded-lg aspect-video flex items-center justify-center">
-          <div className="text-center">
-            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600 dark:text-gray-400">Chart Visualization</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-              Revenue trends by day/week/month
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Revenue Over Time
+          </h2>
+          <div className="h-80">
+            {dailyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dailyRevenue} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorFinRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10B981"
+                    fillOpacity={1}
+                    fill="url(#colorFinRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No revenue data for selected period
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Payment Status
+          </h2>
+          <div className="h-80">
+            {metrics.totalRevenue > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Paid', value: metrics.paidAmount, color: '#10B981' },
+                      { name: 'Outstanding', value: metrics.outstandingAmount - metrics.overdueAmount, color: '#F59E0B' },
+                      { name: 'Overdue', value: metrics.overdueAmount, color: '#EF4444' },
+                    ].filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Paid', value: metrics.paidAmount, color: '#10B981' },
+                      { name: 'Outstanding', value: metrics.outstandingAmount - metrics.overdueAmount, color: '#F59E0B' },
+                      { name: 'Overdue', value: metrics.overdueAmount, color: '#EF4444' },
+                    ].filter(d => d.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No data for selected period
+              </div>
+            )}
           </div>
         </div>
       </div>

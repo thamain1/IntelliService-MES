@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Clock, DollarSign, TrendingUp, Users, BarChart3 } from 'lucide-react';
+import { Clock, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -224,14 +225,49 @@ export function LaborEfficiencyInsight() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Hours by Technician
           </h2>
-          <div className="bg-gray-200 dark:bg-gray-700 rounded-lg aspect-video flex items-center justify-center">
-            <div className="text-center">
-              <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">Chart Visualization</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                Billable vs non-billable hours
-              </p>
-            </div>
+          <div className="h-80">
+            {metrics.techBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={metrics.techBreakdown.map(t => ({
+                    name: t.name.split(' ')[0],
+                    billable: parseFloat(t.billable.toFixed(1)),
+                    nonBillable: parseFloat(t.nonBillable.toFixed(1)),
+                  }))}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `${value}h`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`${value} hrs`]}
+                  />
+                  <Legend />
+                  <Bar dataKey="billable" name="Billable" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="nonBillable" name="Non-Billable" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No time log data for selected period
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Users, Wrench, Clock, DollarSign, BarChart3 } from 'lucide-react';
+import { Users, Wrench, Clock, DollarSign } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -196,14 +197,47 @@ export function TechnicianMetricsReport() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Jobs Completed by Technician
           </h2>
-          <div className="bg-gray-200 dark:bg-gray-700 rounded-lg aspect-video flex items-center justify-center">
-            <div className="text-center">
-              <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">Chart Visualization</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                Bar chart of tickets per tech
-              </p>
-            </div>
+          <div className="h-80">
+            {metrics.techPerformance.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={metrics.techPerformance.map(t => ({
+                    name: t.name.split(' ')[0],
+                    tickets: t.tickets,
+                    hours: parseFloat(t.hours.toFixed(1)),
+                  }))}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="tickets" name="Tickets" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="hours" name="Hours" fill="#10B981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No technician data for selected period
+              </div>
+            )}
           </div>
         </div>
 

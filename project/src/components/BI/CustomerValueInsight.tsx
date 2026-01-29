@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Users, DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -203,58 +204,111 @@ export function CustomerValueInsight() {
         })}
       </div>
 
-      <div className="card p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          Top Customers by Revenue
-        </h2>
-        <div className="overflow-x-auto">
-          {metrics.customers.length > 0 ? (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Customer
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Lifetime Revenue
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Last Service
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Open AR
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {metrics.customers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                  >
-                    <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
-                      {customer.name}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-right font-medium text-gray-900 dark:text-white">
-                      ${customer.lifetimeRevenue.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-right text-gray-600 dark:text-gray-400">
-                      {customer.lastServiceDate
-                        ? new Date(customer.lastServiceDate).toLocaleDateString()
-                        : 'Never'}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-right text-gray-900 dark:text-white">
-                      ${customer.openAR.toLocaleString()}
-                    </td>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Top 10 Customers by Revenue
+          </h2>
+          <div className="h-80">
+            {metrics.customers.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={metrics.customers.slice(0, 10).map(c => ({
+                    name: c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name,
+                    revenue: c.lifetimeRevenue,
+                    openAR: c.openAR,
+                  }))}
+                  layout="vertical"
+                  margin={{ top: 10, right: 30, left: 80, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    type="number"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    fontSize={11}
+                    tickLine={false}
+                    width={75}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
+                    {metrics.customers.slice(0, 10).map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'][index % 10]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No customer data for selected period
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Customer Details
+          </h2>
+          <div className="overflow-x-auto max-h-80 overflow-y-auto">
+            {metrics.customers.length > 0 ? (
+              <table className="w-full">
+                <thead className="sticky top-0 bg-white dark:bg-gray-800">
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Customer
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Revenue
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Open AR
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-              No customer data for this period
-            </p>
-          )}
+                </thead>
+                <tbody>
+                  {metrics.customers.map((customer) => (
+                    <tr
+                      key={customer.id}
+                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
+                        {customer.name}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-right font-medium text-gray-900 dark:text-white">
+                        ${customer.lifetimeRevenue.toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-right text-gray-900 dark:text-white">
+                        ${customer.openAR.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                No customer data for this period
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </BIPageLayout>

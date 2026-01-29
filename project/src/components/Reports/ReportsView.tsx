@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart3,
   Download,
@@ -8,8 +8,13 @@ import {
   DollarSign,
   Users,
   Wrench,
+  FileText,
+  FileSpreadsheet,
+  ChevronDown,
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '../../lib/supabase';
+import { ExportService, ExportData } from '../../services/ExportService';
 
 interface ReportMetrics {
   totalTickets: number;
@@ -20,6 +25,18 @@ interface ReportMetrics {
   topTechnicianJobs: number;
   mostUsedPart: string;
   mostUsedPartCount: number;
+}
+
+interface DailyData {
+  date: string;
+  tickets: number;
+  completed: number;
+}
+
+interface StatusData {
+  name: string;
+  value: number;
+  color: string;
 }
 
 export function ReportsView() {
@@ -33,8 +50,11 @@ export function ReportsView() {
     mostUsedPart: 'N/A',
     mostUsedPartCount: 0,
   });
+  const [dailyData, setDailyData] = useState<DailyData[]>([]);
+  const [statusData, setStatusData] = useState<StatusData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     loadMetrics();
@@ -119,11 +139,88 @@ export function ReportsView() {
         mostUsedPart: topPart?.name || 'N/A',
         mostUsedPartCount: topPart?.count || 0,
       });
+
+      // Compute daily breakdown for chart
+      const dailyMap = new Map<string, { tickets: number; completed: number }>();
+      ticketsData?.forEach((ticket: any) => {
+        const date = new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const existing = dailyMap.get(date) || { tickets: 0, completed: 0 };
+        existing.tickets += 1;
+        if (ticket.status === 'completed') {
+          existing.completed += 1;
+        }
+        dailyMap.set(date, existing);
+      });
+
+      const dailyChartData: DailyData[] = Array.from(dailyMap.entries())
+        .slice(-14) // Last 14 data points
+        .map(([date, data]) => ({
+          date,
+          tickets: data.tickets,
+          completed: data.completed,
+        }));
+      setDailyData(dailyChartData);
+
+      // Compute status breakdown for pie chart
+      const statusCounts: Record<string, number> = {};
+      ticketsData?.forEach((ticket: any) => {
+        const status = ticket.status || 'unknown';
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      });
+
+      const statusColors: Record<string, string> = {
+        open: '#3B82F6',
+        scheduled: '#8B5CF6',
+        in_progress: '#F59E0B',
+        completed: '#10B981',
+        closed_billed: '#06B6D4',
+        closed_no_charge: '#6366F1',
+        cancelled: '#EF4444',
+      };
+
+      const statusChartData: StatusData[] = Object.entries(statusCounts).map(([name, value]) => ({
+        name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        value,
+        color: statusColors[name] || '#9CA3AF',
+      }));
+      setStatusData(statusChartData);
     } catch (error) {
       console.error('Error loading metrics:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getExportData = useCallback((): ExportData => {
+    const startDate = getDateRange();
+    return {
+      title: 'Performance Report',
+      subtitle: `${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)} Summary`,
+      dateRange: { start: startDate, end: new Date() },
+      columns: [
+        { header: 'Metric', key: 'metric' },
+        { header: 'Value', key: 'value' },
+      ],
+      rows: [
+        { metric: 'Total Tickets', value: metrics.totalTickets },
+        { metric: 'Completed Tickets', value: metrics.completedTickets },
+        { metric: 'Completion Rate', value: `${metrics.totalTickets > 0 ? ((metrics.completedTickets / metrics.totalTickets) * 100).toFixed(1) : 0}%` },
+        { metric: 'Avg Completion Time', value: `${metrics.avgCompletionTime.toFixed(1)} hrs` },
+        { metric: 'Estimated Revenue', value: `$${metrics.totalRevenue.toLocaleString()}` },
+        { metric: 'Top Technician', value: `${metrics.topTechnician} (${metrics.topTechnicianJobs} jobs)` },
+        { metric: 'Most Used Part', value: `${metrics.mostUsedPart} (${metrics.mostUsedPartCount} used)` },
+      ],
+      summary: {
+        period: dateRange,
+        generated_at: new Date().toISOString(),
+      },
+    };
+  }, [metrics, dateRange]);
+
+  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
+    const data = getExportData();
+    ExportService.export(data, format);
+    setShowExportMenu(false);
   };
 
   const statCards = [
@@ -180,10 +277,41 @@ export function ReportsView() {
             Performance metrics and business insights
           </p>
         </div>
-        <button className="btn btn-primary flex items-center space-x-2">
-          <Download className="w-5 h-5" />
-          <span>Export Report</span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="btn btn-primary flex items-center space-x-2"
+          >
+            <Download className="w-5 h-5" />
+            <span>Export Report</span>
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+              <button
+                onClick={() => handleExport('pdf')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 rounded-t-lg"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Export as PDF</span>
+              </button>
+              <button
+                onClick={() => handleExport('excel')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Export as Excel</span>
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 rounded-b-lg"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Export as CSV</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="card p-6">
@@ -235,16 +363,43 @@ export function ReportsView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Performance Overview
+            Tickets Over Time
           </h2>
-          <div className="bg-gray-200 dark:bg-gray-700 rounded-lg aspect-video flex items-center justify-center">
-            <div className="text-center">
-              <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">Chart Visualization</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                Integration with Chart.js or Recharts
-              </p>
-            </div>
+          <div className="h-80">
+            {dailyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9CA3AF"
+                    fontSize={11}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="tickets" name="Total Tickets" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="completed" name="Completed" fill="#10B981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No ticket data for selected period
+              </div>
+            )}
           </div>
         </div>
 
@@ -324,18 +479,70 @@ export function ReportsView() {
           Export Options
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="btn btn-outline flex items-center justify-center space-x-2">
-            <Download className="w-5 h-5" />
+          <button
+            onClick={() => handleExport('excel')}
+            className="btn btn-outline flex items-center justify-center space-x-2"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
             <span>Export to Excel</span>
           </button>
-          <button className="btn btn-outline flex items-center justify-center space-x-2">
-            <Download className="w-5 h-5" />
+          <button
+            onClick={() => handleExport('pdf')}
+            className="btn btn-outline flex items-center justify-center space-x-2"
+          >
+            <FileText className="w-5 h-5" />
             <span>Export to PDF</span>
           </button>
-          <button className="btn btn-outline flex items-center justify-center space-x-2">
-            <Download className="w-5 h-5" />
+          <button
+            onClick={() => handleExport('csv')}
+            className="btn btn-outline flex items-center justify-center space-x-2"
+          >
+            <BarChart3 className="w-5 h-5" />
             <span>Export to CSV</span>
           </button>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          Ticket Status Distribution
+        </h2>
+        <div className="h-80">
+          {statusData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  labelLine={false}
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: '#F9FAFB'
+                  }}
+                  formatter={(value: number) => [value, 'Tickets']}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              No status data for selected period
+            </div>
+          )}
         </div>
       </div>
     </div>

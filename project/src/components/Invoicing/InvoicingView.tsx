@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Search, FileText, DollarSign, Clock, CheckCircle, AlertCircle, X, Send, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
+import { InvoiceEmailModal } from './InvoiceEmailModal';
 
 type Invoice = Database['public']['Tables']['invoices']['Row'] & {
   customers?: { name: string };
@@ -1063,6 +1064,7 @@ function InvoiceDetailModal({
 }) {
   const [lineItems, setLineItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     loadLineItems();
@@ -1094,8 +1096,12 @@ function InvoiceDetailModal({
     window.print();
   };
 
-  const handleSend = async () => {
-    alert('Email functionality coming soon!');
+  const handleSend = () => {
+    setShowEmailModal(true);
+  };
+
+  const handleEmailSent = () => {
+    onUpdateStatus(invoice.id, 'sent');
   };
 
   const handleDelete = () => {
@@ -1268,7 +1274,7 @@ function InvoiceDetailModal({
             {invoice.status === 'draft' && (
               <>
                 <button
-                  onClick={() => onUpdateStatus(invoice.id, 'sent')}
+                  onClick={handleSend}
                   className="btn btn-primary flex items-center gap-2"
                 >
                   <Send className="w-4 h-4" />
@@ -1283,13 +1289,22 @@ function InvoiceDetailModal({
               </>
             )}
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-              <button
-                onClick={() => onUpdateStatus(invoice.id, 'paid')}
-                className="btn btn-primary flex items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Mark as Paid
-              </button>
+              <>
+                <button
+                  onClick={() => onUpdateStatus(invoice.id, 'paid')}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Mark as Paid
+                </button>
+                <button
+                  onClick={handleSend}
+                  className="btn btn-outline flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  Resend
+                </button>
+              </>
             )}
           </div>
           <div className="flex gap-2">
@@ -1309,6 +1324,14 @@ function InvoiceDetailModal({
           </div>
         </div>
       </div>
+
+      {showEmailModal && (
+        <InvoiceEmailModal
+          invoiceId={invoice.id}
+          onClose={() => setShowEmailModal(false)}
+          onSent={handleEmailSent}
+        />
+      )}
     </div>
   );
 }
