@@ -11,6 +11,7 @@ const TicketsView = lazy(() => import('./components/Tickets/TicketsView').then(m
 const DispatchView = lazy(() => import('./components/Dispatch/DispatchView').then(m => ({ default: m.DispatchView })));
 const TrackingView = lazy(() => import('./components/Tracking/TrackingView').then(m => ({ default: m.TrackingView })));
 const MappingView = lazy(() => import('./components/Mapping/MappingView').then(m => ({ default: m.MappingView })));
+const DispatchMapView = lazy(() => import('./components/Mapping/DispatchMapView').then(m => ({ default: m.DispatchMapView })));
 const PartsManagementView = lazy(() => import('./components/Parts/PartsManagementView').then(m => ({ default: m.PartsManagementView })));
 const EquipmentView = lazy(() => import('./components/Equipment/EquipmentView').then(m => ({ default: m.EquipmentView })));
 const VendorsView = lazy(() => import('./components/Vendors/VendorsView').then(m => ({ default: m.VendorsView })));
@@ -110,9 +111,9 @@ function AppContent() {
       case 'dispatch':
         return <DispatchView />;
       case 'tracking':
-        return <TrackingView />;
       case 'mapping':
-        return <MappingView />;
+      case 'dispatch-map':
+        return <DispatchMapView />;
       case 'parts':
       case 'parts-inventory':
       case 'parts-purchase-orders':
@@ -217,7 +218,7 @@ function AppContent() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
@@ -236,7 +237,7 @@ function AppContent() {
       </div>
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto flex flex-col w-full">
+      <main className="flex-1 overflow-auto w-full">
         {/* Mobile header with hamburger menu */}
         <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between sticky top-0 z-30">
           <button
@@ -269,14 +270,14 @@ function AppContent() {
           </button>
         </div>
 
-        <div className="flex-1 p-4 sm:p-6 md:p-8">
+        <div className="p-4 sm:p-6 md:p-8">
           <Suspense fallback={<LoadingSpinner />}>
             {renderView()}
           </Suspense>
         </div>
         <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-3 px-4 sm:px-8">
           <p className="text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            Powered by <span className="font-semibold text-gray-900 dark:text-white">4wardmotions Inc</span>
+            Powered by <span className="font-semibold text-gray-900 dark:text-white">4wardmotion Solutions, Inc.</span>
           </p>
         </footer>
       </main>
