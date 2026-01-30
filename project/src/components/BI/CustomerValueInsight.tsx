@@ -49,19 +49,20 @@ export function CustomerValueInsight() {
       const customerData: CustomerData[] = [];
 
       for (const customer of customers || []) {
+        // Query invoices using correct column names (issue_date, total_amount, balance_due)
+        // Exclude draft, cancelled, written_off to match CustomerFinancialService
         const { data: invoices } = await supabase
           .from('invoices')
-          .select('total, status, invoice_date')
+          .select('total_amount, balance_due, status, issue_date')
           .eq('customer_id', customer.id)
-          .gte('invoice_date', start.toISOString());
+          .not('status', 'in', '(draft,cancelled,written_off)')
+          .gte('issue_date', start.toISOString());
 
         const lifetimeRevenue =
-          invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+          invoices?.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0) || 0;
 
         const openAR =
-          invoices
-            ?.filter((inv) => inv.status !== 'paid' && inv.status !== 'void')
-            .reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+          invoices?.reduce((sum, inv) => sum + Number(inv.balance_due || 0), 0) || 0;
 
         const { data: tickets } = await supabase
           .from('tickets')
