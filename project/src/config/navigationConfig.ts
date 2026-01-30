@@ -84,14 +84,8 @@ export const navigationConfig: NavigationGroup[] = [
         roles: ['admin', 'dispatcher'],
       },
       {
-        id: 'tracking',
-        label: 'Tech Tracking',
-        icon: MapPin,
-        roles: ['admin', 'dispatcher'],
-      },
-      {
-        id: 'mapping',
-        label: 'Call Map',
+        id: 'dispatch-map',
+        label: 'Dispatch Map',
         icon: Map,
         roles: ['admin', 'dispatcher'],
       },

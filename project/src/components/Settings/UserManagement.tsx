@@ -23,6 +23,7 @@ export function UserManagement() {
   });
   const [editFormData, setEditFormData] = useState({
     full_name: '',
+    email: '',
     role: 'technician' as UserRole,
     phone: '',
     labor_cost_per_hour: '45',
@@ -128,6 +129,7 @@ export function UserManagement() {
     setEditingUser(user);
     setEditFormData({
       full_name: user.full_name,
+      email: user.email,
       role: user.role,
       phone: user.phone || '',
       labor_cost_per_hour: user.labor_cost_per_hour?.toString() || '45',
@@ -141,11 +143,20 @@ export function UserManagement() {
     if (!editingUser) return;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Check if email changed
+      const emailChanged = editFormData.email !== editingUser.email;
+
       // Update profile information
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: editFormData.full_name,
+          email: editFormData.email,
           role: editFormData.role,
           phone: editFormData.phone || null,
           labor_cost_per_hour: parseFloat(editFormData.labor_cost_per_hour),
@@ -154,13 +165,31 @@ export function UserManagement() {
 
       if (profileError) throw profileError;
 
+      // Update email in auth if changed
+      if (emailChanged) {
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user-email`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: editingUser.id,
+            newEmail: editFormData.email,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          console.error('Email update error:', result.error);
+          alert(`Profile updated, but auth email change failed: ${result.error}`);
+        }
+      }
+
       // Update password if provided
       if (editFormData.new_password && editFormData.new_password.trim() !== '') {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('Not authenticated');
-        }
-
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-password`;
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -383,17 +412,21 @@ export function UserManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
+                  Email *
                 </label>
                 <input
                   type="email"
-                  disabled
-                  value={editingUser.email}
-                  className="input bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                  required
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="input"
+                  placeholder="john@example.com"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Email cannot be changed
-                </p>
+                {editFormData.email !== editingUser.email && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    Email will be updated for login
+                  </p>
+                )}
               </div>
 
               <div>

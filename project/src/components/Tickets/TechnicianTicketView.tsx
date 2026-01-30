@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Camera, Package, MessageSquare, CheckCircle, Clock, AlertTriangle, MapPin, Phone, User, Plus, X, Upload, History, Eye, AlertOctagon, PackageX } from 'lucide-react';
+import { Camera, Package, MessageSquare, CheckCircle, Clock, AlertTriangle, MapPin, Phone, User, Plus, X, Upload, History, Eye, AlertOctagon, PackageX, Navigation, NavigationOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { holdTicketForParts, reportTicketIssue } from '../../services/TicketHoldService';
+import { GeolocationService, type GeolocationPosition } from '../../services/GeolocationService';
 
 type ActiveTimer = {
   has_active_timer: boolean;
@@ -125,6 +126,11 @@ export function TechnicianTicketView() {
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Location sharing state
+  const [isLocationSharing, setIsLocationSharing] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [lastLocation, setLastLocation] = useState<GeolocationPosition | null>(null);
 
   useEffect(() => {
     loadMyTickets();
@@ -328,6 +334,11 @@ export function TechnicianTicketView() {
       await loadMyTickets();
       await loadTicketDetails(selectedTicket.id);
       await loadOnSiteProgress(selectedTicket.id);
+
+      // Auto-start location sharing when work begins
+      if (!isLocationSharing) {
+        await startLocationSharing();
+      }
     } catch (error) {
       console.error('Error starting work:', error);
       alert('Failed to start work: ' + (error as Error).message);
@@ -430,6 +441,59 @@ export function TechnicianTicketView() {
       alert('Failed to report issue: ' + (error as Error).message);
     }
   };
+
+  // Location sharing functions
+  const startLocationSharing = async () => {
+    if (!profile?.id) return;
+
+    if (!GeolocationService.isSupported()) {
+      setLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setLocationError(null);
+
+    const started = await GeolocationService.startAutoUpdates(
+      profile.id,
+      60000, // Update every 1 minute
+      (position) => {
+        setLastLocation(position);
+        setLocationError(null);
+        console.log('[Location] Updated:', position.latitude, position.longitude);
+      },
+      (error) => {
+        setLocationError(error.message);
+        console.error('[Location] Error:', error.message);
+      }
+    );
+
+    if (started) {
+      setIsLocationSharing(true);
+    }
+  };
+
+  const stopLocationSharing = () => {
+    GeolocationService.stopAutoUpdates();
+    setIsLocationSharing(false);
+    setLastLocation(null);
+  };
+
+  const toggleLocationSharing = async () => {
+    if (isLocationSharing) {
+      stopLocationSharing();
+    } else {
+      await startLocationSharing();
+    }
+  };
+
+  // Cleanup location sharing on unmount
+  useEffect(() => {
+    return () => {
+      if (isLocationSharing) {
+        GeolocationService.stopAutoUpdates();
+      }
+    };
+  }, [isLocationSharing]);
 
   const handleAddUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -991,6 +1055,50 @@ export function TechnicianTicketView() {
 
               {!isReadonly && (
                 <>
+                  {/* Location Sharing Status */}
+                  <div className={`p-3 rounded-lg border ${
+                    isLocationSharing
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        {isLocationSharing ? (
+                          <Navigation className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <NavigationOff className="w-4 h-4 text-gray-400" />
+                        )}
+                        <span className={`text-sm font-medium ${
+                          isLocationSharing
+                            ? 'text-green-700 dark:text-green-300'
+                            : 'text-gray-600 dark:text-gray-400'
+                        }`}>
+                          {isLocationSharing ? 'Location Sharing Active' : 'Location Sharing Off'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={toggleLocationSharing}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          isLocationSharing ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            isLocationSharing ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {locationError && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">{locationError}</p>
+                    )}
+                    {lastLocation && isLocationSharing && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        Last update: {new Date(lastLocation.timestamp).toLocaleTimeString()}
+                      </p>
+                    )}
+                  </div>
+
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
                   <div className="space-y-3">
                     {(selectedTicket.status === 'open' || selectedTicket.status === 'scheduled') && !isCurrentlyTiming && (

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, TrendingUp, Users, Settings } from 'lucide-react';
+import { X, FileText, Calendar, DollarSign, TrendingUp, Users, Settings, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
+import { ContractAutomationService } from '../../services/ContractAutomationService';
 
 type ServiceContract = Database['public']['Tables']['service_contracts']['Row'] & {
   customers?: { name: string; email: string };
@@ -18,6 +19,7 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
   const [contract, setContract] = useState(initialContract);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [renewing, setRenewing] = useState(false);
   const [formData, setFormData] = useState({
     name: contract.name,
     status: contract.status,
@@ -27,6 +29,41 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
     auto_renew: contract.auto_renew,
     notes: contract.notes || '',
   });
+
+  // Calculate days until expiry
+  const daysUntilExpiry = contract.end_date
+    ? Math.ceil((new Date(contract.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 60 && daysUntilExpiry > 0;
+  const isExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
+
+  const handleRenewContract = async () => {
+    if (!contract.end_date) return;
+
+    setRenewing(true);
+    try {
+      const currentEndDate = new Date(contract.end_date);
+      const newEndDate = new Date(currentEndDate);
+      newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+
+      const result = await ContractAutomationService.renewContract(contract.id, {
+        newEndDate: newEndDate.toISOString().split('T')[0],
+        notes: `Renewed on ${new Date().toLocaleDateString()} from contract ${contract.name}`,
+      });
+
+      if (result.success) {
+        alert('Contract renewed successfully! A new contract has been created.');
+        onClose(); // Close and refresh the list
+      } else {
+        alert(`Failed to renew: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error('Error renewing contract:', error);
+      alert(`Failed to renew contract: ${error.message}`);
+    } finally {
+      setRenewing(false);
+    }
+  };
 
   const handleUpdate = async () => {
     try {
@@ -116,6 +153,50 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Expiration Alert Banner */}
+          {(isExpiringSoon || isExpired) && contract.status === 'active' && (
+            <div
+              className={`p-4 rounded-lg flex items-center justify-between ${
+                isExpired
+                  ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                  : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <AlertTriangle
+                  className={`w-5 h-5 ${isExpired ? 'text-red-600' : 'text-orange-600'}`}
+                />
+                <div>
+                  <p className={`font-medium ${isExpired ? 'text-red-800 dark:text-red-200' : 'text-orange-800 dark:text-orange-200'}`}>
+                    {isExpired
+                      ? 'This contract has expired'
+                      : `Contract expires in ${daysUntilExpiry} days`}
+                  </p>
+                  <p className={`text-sm ${isExpired ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    End Date: {new Date(contract.end_date!).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleRenewContract}
+                disabled={renewing}
+                className="btn-primary text-sm py-2"
+              >
+                {renewing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Renewing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Renew Contract
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="card p-4">
               <div className="flex items-center justify-between">
@@ -344,6 +425,25 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
               )}
 
               <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                {contract.status === 'active' && contract.end_date && (
+                  <button
+                    onClick={handleRenewContract}
+                    disabled={renewing}
+                    className="btn-outline"
+                  >
+                    {renewing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        Renewing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Renew Contract
+                      </>
+                    )}
+                  </button>
+                )}
                 <button onClick={() => setEditing(true)} className="btn-primary">
                   Edit Contract
                 </button>

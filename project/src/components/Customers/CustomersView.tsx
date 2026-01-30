@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Users, Building, Phone, Mail, X } from 'lucide-react';
+import { Plus, Search, Users, Building, Phone, Mail, X, MapPin, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { CustomerDetailModal } from './CustomerDetailModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { GeocodingService } from '../../services/GeocodingService';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
 
@@ -27,6 +28,9 @@ export function CustomersView() {
     zip_code: '',
     notes: '',
   });
+  const [autoGeocode, setAutoGeocode] = useState(true);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState<string | null>(null);
 
   useEffect(() => {
     loadCustomers();
@@ -252,9 +256,32 @@ export function CustomersView() {
               onSubmit={async (e) => {
                 e.preventDefault();
                 try {
-                  const { error } = await supabase.from('customers').insert([formData]);
+                  // Insert customer first
+                  const { data: newCustomer, error } = await supabase
+                    .from('customers')
+                    .insert([formData])
+                    .select()
+                    .single();
 
                   if (error) throw error;
+
+                  // Auto-geocode if enabled and address is present
+                  if (autoGeocode && formData.address && newCustomer) {
+                    setGeocoding(true);
+                    setGeocodeStatus('Geocoding address...');
+                    try {
+                      const result = await GeocodingService.geocodeCustomer(newCustomer.id);
+                      if (result.success) {
+                        setGeocodeStatus('Address geocoded successfully!');
+                      } else {
+                        setGeocodeStatus(`Geocoding failed: ${result.error}`);
+                      }
+                    } catch (geoError) {
+                      console.error('Geocoding error:', geoError);
+                      setGeocodeStatus('Geocoding failed. You can geocode later from the map.');
+                    }
+                    setGeocoding(false);
+                  }
 
                   setShowAddModal(false);
                   setFormData({
@@ -267,6 +294,7 @@ export function CustomersView() {
                     zip_code: '',
                     notes: '',
                   });
+                  setGeocodeStatus(null);
                   loadCustomers();
                 } catch (error) {
                   console.error('Error adding customer:', error);
@@ -371,6 +399,41 @@ export function CustomersView() {
                   />
                 </div>
               </div>
+
+              {/* Auto-geocode toggle */}
+              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">Auto-geocode address</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Get map coordinates for dispatch</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoGeocode(!autoGeocode)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    autoGeocode ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoGeocode ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {geocodeStatus && (
+                <div className={`p-3 rounded-lg flex items-center space-x-2 ${
+                  geocodeStatus.includes('failed')
+                    ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
+                    : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                }`}>
+                  {geocoding && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span className="text-sm">{geocodeStatus}</span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

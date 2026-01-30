@@ -3,7 +3,18 @@
     "allow": [
       "Bash(npm run build:*)",
       "Bash(npm install)",
-      "Bash(npm run preview:*)"
+      "Bash(npm run preview:*)",
+      "Bash(gh repo create:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(npx supabase login)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(dir \"C:\\\\dev\\\\intelliservicebeta\\\\docs\")",
+      "Bash(ls:*)",
+      "Bash(xargs:*)",
+      "Bash(find:*)"
     ]
   }
 }
