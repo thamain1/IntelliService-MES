@@ -24,6 +24,7 @@ import { NewTicketModal } from '../Tickets/NewTicketModal';
 import { ProjectBillingSchedule } from './ProjectBillingSchedule';
 import { DepositReleasePanel } from './DepositReleasePanel';
 import { MasterProjectView } from './MasterProjectView';
+import { GanttChart } from './GanttChart';
 import { useAuth } from '../../contexts/AuthContext';
 
 type ProjectDetailViewProps = {
@@ -1082,15 +1083,22 @@ export function ProjectDetailView({ projectId, onBack }: ProjectDetailViewProps)
       )}
 
       {activeTab === 'gantt' && (
-        <div className="card p-8 text-center">
-          <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Gantt Chart View</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Visual timeline showing all tasks, dependencies, and critical path.
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Integration with a Gantt chart library (e.g., react-gantt-chart) would display here.
-          </p>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Gantt Chart</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Visual timeline showing phases and tasks
+              </p>
+            </div>
+          </div>
+
+          <GanttChart
+            phases={phases}
+            tasks={tasks}
+            projectStartDate={project.start_date}
+            projectEndDate={project.end_date}
+          />
         </div>
       )}
 
