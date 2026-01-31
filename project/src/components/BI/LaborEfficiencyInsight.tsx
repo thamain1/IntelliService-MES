@@ -43,9 +43,10 @@ export function LaborEfficiencyInsight() {
 
       // Use correct column names: clock_in_time, clock_out_time
       // Time logged with a ticket_id is considered billable
+      // Include role to filter for technicians only
       const { data: timeLogs, error } = await supabase
         .from('time_logs')
-        .select('*, profiles!time_logs_user_id_fkey(full_name), tickets(title)')
+        .select('*, profiles!time_logs_user_id_fkey(full_name, role), tickets(title)')
         .gte('clock_in_time', start.toISOString())
         .lte('clock_in_time', end.toISOString())
         .eq('status', 'completed');
@@ -65,7 +66,12 @@ export function LaborEfficiencyInsight() {
         { name: string; billable: number; nonBillable: number }
       > = {};
 
-      timeLogs?.forEach((log: any) => {
+      // Filter to only include technicians
+      const technicianLogs = timeLogs?.filter((log: any) =>
+        log.profiles?.role === 'technician'
+      ) || [];
+
+      technicianLogs.forEach((log: any) => {
         if (!log.clock_out_time) return;
 
         // Use total_hours if available, otherwise calculate
@@ -100,6 +106,8 @@ export function LaborEfficiencyInsight() {
           techStats[techId].nonBillable += hours;
         }
       });
+
+      console.log('[LaborEfficiency] Found', technicianLogs.length, 'technician time logs');
 
       const totalHours = billableHours + nonBillableHours;
       const utilizationPercent = totalHours > 0 ? (billableHours / totalHours) * 100 : 0;
