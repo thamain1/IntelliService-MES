@@ -19,8 +19,11 @@ export interface TechnicianMapData {
     ticket_number: string;
     title: string;
     status: string;
+    priority: string;
     customer_name: string;
     customer_address: string | null;
+    customer_latitude: number | null;
+    customer_longitude: number | null;
     scheduled_date: string | null;
     estimated_duration: number | null;
   }>;

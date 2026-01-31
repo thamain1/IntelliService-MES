@@ -52,7 +52,7 @@ export function useTechnicianLocations(
           // Get active tickets assigned to this tech
           const { data: ticketData } = await supabase
             .from('tickets')
-            .select('id, ticket_number, title, status, scheduled_date, estimated_duration, customer:customers!tickets_customer_id_fkey(name, address)')
+            .select('id, ticket_number, title, status, priority, scheduled_date, estimated_duration, customer:customers!tickets_customer_id_fkey(name, address, latitude, longitude)')
             .eq('assigned_to', tech.id)
             .in('status', ['scheduled', 'in_progress'])
             .order('scheduled_date', { ascending: true });
@@ -73,8 +73,11 @@ export function useTechnicianLocations(
             ticket_number: ticket.ticket_number,
             title: ticket.title,
             status: ticket.status,
+            priority: ticket.priority || 'normal',
             customer_name: ticket.customer?.name || 'Unknown',
             customer_address: ticket.customer?.address || null,
+            customer_latitude: ticket.customer?.latitude || null,
+            customer_longitude: ticket.customer?.longitude || null,
             scheduled_date: ticket.scheduled_date,
             estimated_duration: ticket.estimated_duration,
           }));
