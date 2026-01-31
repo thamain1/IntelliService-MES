@@ -56,6 +56,11 @@ export function LaborEfficiencyInsight() {
         throw error;
       }
 
+      console.log('[LaborEfficiency] Date range:', start.toISOString(), 'to', end.toISOString());
+      console.log('[LaborEfficiency] Total time logs found:', timeLogs?.length);
+      console.log('[LaborEfficiency] Roles in data:', [...new Set(timeLogs?.map((l: any) => l.profiles?.role))]);
+      console.log('[LaborEfficiency] Sample log:', timeLogs?.[0]);
+
       let billableHours = 0;
       let nonBillableHours = 0;
       let laborCost = 0;
@@ -70,8 +75,6 @@ export function LaborEfficiencyInsight() {
       const technicianLogs = timeLogs?.filter((log: any) =>
         log.profiles?.role?.toLowerCase() === 'technician'
       ) || [];
-
-      console.log('[LaborEfficiency] Total logs:', timeLogs?.length, 'Roles found:', [...new Set(timeLogs?.map((l: any) => l.profiles?.role))]);
 
       technicianLogs.forEach((log: any) => {
         if (!log.clock_out_time) return;
