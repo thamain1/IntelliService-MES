@@ -195,17 +195,29 @@ export function TimeClockView() {
       const clockOutTime = new Date();
       const clockInTime = new Date(activeLog.clock_in_time);
       const totalHours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+      const roundedHours = Math.round(totalHours * 100) / 100;
 
-      const { error } = await supabase
+      console.log('[TimeClockView] Clock out - ID:', activeLog.id);
+      console.log('[TimeClockView] Clock in time:', clockInTime);
+      console.log('[TimeClockView] Clock out time:', clockOutTime);
+      console.log('[TimeClockView] Total hours calculated:', roundedHours);
+
+      const { data, error } = await supabase
         .from('time_logs')
         .update({
           clock_out_time: clockOutTime.toISOString(),
-          total_hours: Math.round(totalHours * 100) / 100,
+          total_hours: roundedHours,
           status: 'completed',
         })
-        .eq('id', activeLog.id);
+        .eq('id', activeLog.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[TimeClockView] Clock out error:', error);
+        throw error;
+      }
+
+      console.log('[TimeClockView] Clock out success - updated record:', data);
 
       // Stop location sharing when clocking out
       stopLocationSharing();
