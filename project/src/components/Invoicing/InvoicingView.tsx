@@ -533,56 +533,56 @@ export function InvoicingView() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card p-6">
+      <div className="flex flex-col sm:flex-row gap-6">
+        <div className="card p-6 flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
                 ${totalRevenue.toLocaleString()}
               </p>
             </div>
-            <div className="bg-blue-100 dark:bg-blue-900/20 text-blue-600 p-3 rounded-lg">
+            <div className="bg-blue-100 dark:bg-blue-900/20 text-blue-600 p-3 rounded-lg flex-shrink-0">
               <DollarSign className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="card p-6">
+        <div className="card p-6 flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Paid</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
+              <p className="text-2xl font-bold text-green-600 mt-2">
                 ${paidAmount.toLocaleString()}
               </p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900/20 text-green-600 p-3 rounded-lg">
+            <div className="bg-green-100 dark:bg-green-900/20 text-green-600 p-3 rounded-lg flex-shrink-0">
               <CheckCircle className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="card p-6">
+        <div className="card p-6 flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Outstanding</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
+              <p className="text-2xl font-bold text-yellow-600 mt-2">
                 ${outstandingAmount.toLocaleString()}
               </p>
             </div>
-            <div className="bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 p-3 rounded-lg">
+            <div className="bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 p-3 rounded-lg flex-shrink-0">
               <Clock className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="card p-6">
+        <div className="card p-6 flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Overdue</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{overdueCount}</p>
+              <p className="text-2xl font-bold text-red-600 mt-2">{overdueCount}</p>
             </div>
-            <div className="bg-red-100 dark:bg-red-900/20 text-red-600 p-3 rounded-lg">
+            <div className="bg-red-100 dark:bg-red-900/20 text-red-600 p-3 rounded-lg flex-shrink-0">
               <AlertCircle className="w-6 h-6" />
             </div>
           </div>
