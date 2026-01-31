@@ -56,11 +56,6 @@ export function LaborEfficiencyInsight() {
         throw error;
       }
 
-      console.log('[LaborEfficiency] Date range:', start.toISOString(), 'to', end.toISOString());
-      console.log('[LaborEfficiency] Total time logs found:', timeLogs?.length);
-      console.log('[LaborEfficiency] Roles in data:', [...new Set(timeLogs?.map((l: any) => l.profiles?.role))]);
-      console.log('[LaborEfficiency] Sample log:', timeLogs?.[0]);
-
       let billableHours = 0;
       let nonBillableHours = 0;
       let laborCost = 0;
@@ -71,12 +66,8 @@ export function LaborEfficiencyInsight() {
         { name: string; billable: number; nonBillable: number }
       > = {};
 
-      // Filter to only include technicians (case-insensitive)
-      const technicianLogs = timeLogs?.filter((log: any) =>
-        log.profiles?.role?.toLowerCase() === 'technician'
-      ) || [];
-
-      technicianLogs.forEach((log: any) => {
+      // Process all completed time logs (all roles)
+      (timeLogs || []).forEach((log: any) => {
         if (!log.clock_out_time) return;
 
         // Use total_hours if available, otherwise calculate
@@ -111,8 +102,6 @@ export function LaborEfficiencyInsight() {
           techStats[techId].nonBillable += hours;
         }
       });
-
-      console.log('[LaborEfficiency] Found', technicianLogs.length, 'technician time logs');
 
       const totalHours = billableHours + nonBillableHours;
       const utilizationPercent = totalHours > 0 ? (billableHours / totalHours) * 100 : 0;
