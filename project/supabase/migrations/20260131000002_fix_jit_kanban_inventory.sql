@@ -43,13 +43,13 @@ usage_history AS (
     pu.part_id,
     COALESCE(
       SUM(pu.quantity_used)::numeric / NULLIF(
-        EXTRACT(DAY FROM (CURRENT_DATE - MIN(DATE(pu.created_at)))),
+        (CURRENT_DATE - MIN(pu.created_at::date))::numeric,
         0
       ),
       0
     ) AS avg_daily_usage,
     SUM(pu.quantity_used) AS total_used_90d,
-    COUNT(DISTINCT DATE(pu.created_at)) AS days_with_usage
+    COUNT(DISTINCT pu.created_at::date) AS days_with_usage
   FROM parts_usage pu
   WHERE pu.created_at >= CURRENT_DATE - INTERVAL '90 days'
   GROUP BY pu.part_id
@@ -179,7 +179,24 @@ LEFT JOIN inventory_reorder_policies irp ON irp.part_id = p.id
   AND irp.is_active = true
 LEFT JOIN preferred_vendors pv ON pv.part_id = p.id
 WHERE sl.is_active = true
-  AND p.item_type = 'part';
+  AND p.item_type = 'part'
+  AND (
+    -- For warehouses: show all parts (standard behavior)
+    sl.location_type = 'warehouse'
+    OR
+    -- For trucks: only show parts with explicit policy AND min_qty > 0
+    (
+      sl.location_type = 'truck'
+      AND irp.id IS NOT NULL
+      AND COALESCE(irp.min_qty, 0) > 0
+    )
+    OR
+    -- For other location types (project_site, customer_site, vendor): show if they have inventory
+    (
+      sl.location_type NOT IN ('warehouse', 'truck')
+      AND COALESCE(inv.on_hand, 0) > 0
+    )
+  );
 
 
 -- Function to auto-generate draft POs for items below reorder point
