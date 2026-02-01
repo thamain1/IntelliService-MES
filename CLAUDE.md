@@ -117,3 +117,27 @@ PostgreSQL date subtraction already returns integer days. Don't use EXTRACT on t
 3. Added `fn_create_po_from_alert()` and `fn_generate_reorder_pos()` functions
 4. Added Edit Part functionality with preferred vendor assignment
 5. Fixed truck filtering in `vw_reorder_alerts`
+6. Added escalation support contact (Jesse Morgan) to Help Center
+7. Technician workflow improvements:
+   - Clock-in required before starting work on tickets (with popup alert)
+   - "Get Directions" button opens native maps app for customer location
+   - Ticket completion success modal with clear feedback
+   - Completed tickets show "Ticket Completed" indicator instead of Quick Actions
+8. Parts workflow improvements:
+   - "Add Part" modal only shows parts from technician's truck inventory (no fallback to all parts)
+   - "No Parts on Truck" message with link to request parts
+   - New "Need Parts" modal with proper form (part selection from full catalog, quantity, urgency)
+   - Ticket goes on hold when parts are requested
+
+## Technician Ticket Workflow
+- **Clock-in required**: Technicians must clock in via Time Clock before starting work
+- **Add Part (used)**: Shows ONLY parts from truck inventory (`vw_technician_truck_inventory`)
+- **Need Parts**: Opens modal to request parts from full catalog, puts ticket on hold
+- **Mark Complete**: Stops timer, shows success modal, navigates back to ticket list
+- **Get Directions**: Opens Google Maps with customer address
+
+## Parts Management
+- **Track by Serial Number**: Enable for parts requiring individual serial number tracking
+- **Requires Registration**: Enable for parts requiring warranty registration with manufacturer
+  - When checked, must provide Registration URL
+  - Stored in `parts.requires_registration` and `parts.registration_url` columns

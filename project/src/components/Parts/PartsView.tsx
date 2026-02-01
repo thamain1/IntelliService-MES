@@ -88,6 +88,8 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
     is_returnable: isTool,
     tool_category: '' as string,
     asset_tag: '' as string,
+    requires_registration: false,
+    registration_url: '',
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -152,6 +154,8 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
       is_returnable: part.is_returnable || false,
       tool_category: part.tool_category || '',
       asset_tag: part.asset_tag || '',
+      requires_registration: (part as any).requires_registration || false,
+      registration_url: (part as any).registration_url || '',
     });
 
     // Load existing vendor mapping
@@ -217,6 +221,8 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
           is_returnable: formData.is_returnable,
           tool_category: formData.tool_category || null,
           asset_tag: formData.asset_tag || null,
+          requires_registration: formData.requires_registration,
+          registration_url: formData.requires_registration ? formData.registration_url : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', editingPart.id);
@@ -828,6 +834,42 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
                   </div>
                 )}
 
+                <div className="md:col-span-2">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.requires_registration}
+                      onChange={(e) => setFormData({ ...formData, requires_registration: e.target.checked, registration_url: e.target.checked ? formData.registration_url : '' })}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Requires Registration
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                    Enable this for parts that require warranty registration with the manufacturer
+                  </p>
+                </div>
+
+                {formData.requires_registration && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Registration URL *
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      value={formData.registration_url}
+                      onChange={(e) => setFormData({ ...formData, registration_url: e.target.value })}
+                      className="input"
+                      placeholder="https://manufacturer.com/warranty-registration"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      URL where warranty registration can be completed
+                    </p>
+                  </div>
+                )}
+
                 {isTool && (
                   <>
                     <div>
@@ -1030,6 +1072,42 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
                         </span>
                       </label>
                     </div>
+
+                    <div className="md:col-span-2">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.requires_registration}
+                          onChange={(e) => setFormData({ ...formData, requires_registration: e.target.checked, registration_url: e.target.checked ? formData.registration_url : '' })}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Requires Registration
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                        Enable this for parts that require warranty registration with the manufacturer
+                      </p>
+                    </div>
+
+                    {formData.requires_registration && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Registration URL *
+                        </label>
+                        <input
+                          type="url"
+                          required
+                          value={formData.registration_url}
+                          onChange={(e) => setFormData({ ...formData, registration_url: e.target.value })}
+                          className="input"
+                          placeholder="https://manufacturer.com/warranty-registration"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          URL where warranty registration can be completed
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
