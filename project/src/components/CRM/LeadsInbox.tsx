@@ -74,8 +74,14 @@ export function LeadsInbox({ onRefresh }: LeadsInboxProps) {
     }
   };
 
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
   const handleCreateLead = async () => {
     if (!newLead.name.trim()) return;
+
+    setCreating(true);
+    setCreateError(null);
 
     try {
       await CRMService.createLead(newLead);
@@ -92,8 +98,11 @@ export function LeadsInbox({ onRefresh }: LeadsInboxProps) {
       });
       await loadLeads();
       onRefresh?.();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create lead:', err);
+      setCreateError(err?.message || 'Failed to create lead. Please try again.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -351,12 +360,25 @@ export function LeadsInbox({ onRefresh }: LeadsInboxProps) {
                 </div>
               </div>
 
+              {createError && (
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-600">
+                    <AlertCircle className="w-4 h-4" />
+                    <span className="text-sm">{createError}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6 flex justify-end gap-3">
-                <button onClick={() => setShowNewLead(false)} className="btn btn-outline">
+                <button onClick={() => { setShowNewLead(false); setCreateError(null); }} className="btn btn-outline">
                   Cancel
                 </button>
-                <button onClick={handleCreateLead} className="btn btn-primary" disabled={!newLead.name.trim()}>
-                  Create Lead
+                <button
+                  onClick={handleCreateLead}
+                  className="btn btn-primary"
+                  disabled={!newLead.name.trim() || creating}
+                >
+                  {creating ? 'Creating...' : 'Create Lead'}
                 </button>
               </div>
             </div>

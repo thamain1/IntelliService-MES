@@ -31,14 +31,16 @@ interface CRMViewProps {
 }
 
 export function CRMView({ initialTab = 'pipeline' }: CRMViewProps) {
-  const [activeTab, setActiveTab] = useState<CRMTab>(() => {
-    if (initialTab.includes('pipeline')) return 'pipeline';
-    if (initialTab.includes('leads')) return 'leads';
-    if (initialTab.includes('opportunities')) return 'opportunities';
-    if (initialTab.includes('interactions')) return 'interactions';
-    if (initialTab.includes('analytics')) return 'analytics';
+  const getTabFromInitial = (tab: string): CRMTab => {
+    if (tab.includes('pipeline')) return 'pipeline';
+    if (tab.includes('leads')) return 'leads';
+    if (tab.includes('opportunities')) return 'opportunities';
+    if (tab.includes('interactions')) return 'interactions';
+    if (tab.includes('analytics')) return 'analytics';
     return 'pipeline';
-  });
+  };
+
+  const [activeTab, setActiveTab] = useState<CRMTab>(() => getTabFromInitial(initialTab));
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     pipelineValue: 0,
@@ -46,6 +48,11 @@ export function CRMView({ initialTab = 'pipeline' }: CRMViewProps) {
     opportunities: 0,
     pendingFollowUps: 0,
   });
+
+  // Update active tab when initialTab prop changes (from sidebar navigation)
+  useEffect(() => {
+    setActiveTab(getTabFromInitial(initialTab));
+  }, [initialTab]);
 
   useEffect(() => {
     loadStats();
