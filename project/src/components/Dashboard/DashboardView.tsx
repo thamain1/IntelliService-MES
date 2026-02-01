@@ -60,7 +60,7 @@ export function DashboardView({ onNavigate }: DashboardViewProps = {}) {
         ticketsRes,
         completedRes,
         activeTechsRes,
-        partsRes,
+        reorderAlertsRes,
         recentRes,
         scheduledRes,
         holdMetricsRes,
@@ -76,8 +76,9 @@ export function DashboardView({ onNavigate }: DashboardViewProps = {}) {
           .from('vw_active_technicians')
           .select('*', { count: 'exact' }),
         supabase
-          .from('parts')
-          .select('*', { count: 'exact' }),
+          .from('vw_reorder_alerts')
+          .select('part_id', { count: 'exact' })
+          .eq('below_reorder_point', true),
         supabase
           .from('tickets')
           .select('*, customers!tickets_customer_id_fkey(name), assigned_to_profile:profiles!tickets_assigned_to_fkey(full_name)')
@@ -97,9 +98,9 @@ export function DashboardView({ onNavigate }: DashboardViewProps = {}) {
 
       const openCount = ticketsRes.data?.filter((t) => t.status === 'open').length || 0;
 
-      const lowStockCount = partsRes.data?.filter((part: any) =>
-        part.quantity_on_hand < part.reorder_level
-      ).length || 0;
+      // Count unique parts below reorder point (view may have multiple locations per part)
+      const uniquePartsLowStock = new Set(reorderAlertsRes.data?.map((r: any) => r.part_id) || []);
+      const lowStockCount = uniquePartsLowStock.size;
 
       const holdMetrics = holdMetricsRes.data;
 
