@@ -207,8 +207,8 @@ SELECT
     'estimate' as event_type,
     e.id as event_id,
     e.status as event_subtype,
-    e.title as event_title,
-    e.description as event_description,
+    e.job_title as event_title,
+    e.job_description as event_description,
     e.created_at as event_date,
     p.full_name as created_by_name
 FROM customers c
@@ -244,7 +244,7 @@ CREATE OR REPLACE VIEW vw_sales_pipeline AS
 SELECT
     e.id as estimate_id,
     e.estimate_number,
-    e.title,
+    e.job_title as title,
     e.total_amount,
     e.status,
     e.deal_stage_id,
