@@ -52,6 +52,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [reorderAlertCount, setReorderAlertCount] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'inventory' | 'warehouses'>('inventory');
   const [selectedPartForInventory, setSelectedPartForInventory] = useState<{
@@ -97,7 +98,25 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
   useEffect(() => {
     loadParts();
     loadVendors();
+    loadReorderAlertCount();
   }, [itemType]);
+
+  const loadReorderAlertCount = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vw_reorder_alerts')
+        .select('part_id')
+        .eq('below_reorder_point', true);
+
+      if (error) throw error;
+
+      // Count unique parts (view may have multiple locations per part)
+      const uniqueParts = new Set(data?.map((r) => r.part_id) || []);
+      setReorderAlertCount(uniqueParts.size);
+    } catch (error) {
+      console.error('Error loading reorder alert count:', error);
+    }
+  };
 
   const loadVendors = async () => {
     try {
@@ -402,7 +421,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Low Stock Items</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{lowStockParts.length}</p>
+              <p className="text-3xl font-bold text-red-600 mt-2">{reorderAlertCount}</p>
             </div>
             <div className="bg-red-100 dark:bg-red-900/20 text-red-600 p-3 rounded-lg">
               <AlertTriangle className="w-6 h-6" />
@@ -598,14 +617,14 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         </div>
       </div>
 
-      {lowStockParts.length > 0 && (
+      {reorderAlertCount > 0 && (
         <div className="card p-6 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
           <div className="flex items-start space-x-3">
             <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
             <div className="flex-1">
               <h3 className="font-bold text-red-900 dark:text-red-200">Low Stock Alert</h3>
               <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                {lowStockParts.length} {itemLabelPlural.toLowerCase()} need to be reordered
+                {reorderAlertCount} {itemLabelPlural.toLowerCase()} need to be reordered
               </p>
               <div className="mt-3 space-y-1">
                 {lowStockParts.slice(0, 5).map((part) => (
