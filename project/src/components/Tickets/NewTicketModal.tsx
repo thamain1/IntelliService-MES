@@ -41,6 +41,8 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
     estimated_duration: '120',
     phase_milestone: '',
     technician_notes: '',
+    site_contact_name: '',
+    site_contact_phone: '',
   });
 
   useEffect(() => {
@@ -109,6 +111,8 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
       if (formData.estimated_duration) insertData.estimated_duration = parseInt(formData.estimated_duration);
       if (formData.phase_milestone) insertData.phase_milestone = formData.phase_milestone;
       if (formData.technician_notes) insertData.technician_notes = formData.technician_notes;
+      if (formData.site_contact_name) insertData.site_contact_name = formData.site_contact_name;
+      if (formData.site_contact_phone) insertData.site_contact_phone = formData.site_contact_phone;
 
       const { error } = await supabase.from('tickets').insert(insertData);
 
@@ -133,6 +137,8 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
         estimated_duration: '120',
         phase_milestone: '',
         technician_notes: '',
+        site_contact_name: '',
+        site_contact_phone: '',
       });
       setSelectedCustomer('');
       onSuccess();
@@ -232,8 +238,16 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
               required
               value={formData.customer_id}
               onChange={(e) => {
-                setFormData({ ...formData, customer_id: e.target.value, equipment_id: '' });
-                setSelectedCustomer(e.target.value);
+                const customerId = e.target.value;
+                const customer = customers.find(c => c.id === customerId);
+                setFormData({
+                  ...formData,
+                  customer_id: customerId,
+                  equipment_id: '',
+                  site_contact_name: (customer as any)?.site_contact_name || '',
+                  site_contact_phone: (customer as any)?.site_contact_phone || '',
+                });
+                setSelectedCustomer(customerId);
               }}
               className="input"
             >
@@ -268,6 +282,37 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
                 Select a customer first
               </p>
             )}
+          </div>
+
+          {/* Site Contact Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Site Contact Name
+              </label>
+              <input
+                type="text"
+                value={formData.site_contact_name}
+                onChange={(e) => setFormData({ ...formData, site_contact_name: e.target.value })}
+                placeholder="On-site contact person"
+                className="input"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Pre-filled from customer if available
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Site Contact Phone
+              </label>
+              <input
+                type="tel"
+                value={formData.site_contact_phone}
+                onChange={(e) => setFormData({ ...formData, site_contact_phone: e.target.value })}
+                placeholder="Contact phone number"
+                className="input"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

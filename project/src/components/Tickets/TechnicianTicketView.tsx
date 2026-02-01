@@ -1071,6 +1071,24 @@ export function TechnicianTicketView() {
                     </p>
                   </div>
                 </div>
+                {((selectedTicket as any).site_contact_name || (selectedTicket as any).site_contact_phone) && (
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">Site Contact</p>
+                    {(selectedTicket as any).site_contact_name && (
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {(selectedTicket as any).site_contact_name}
+                      </p>
+                    )}
+                    {(selectedTicket as any).site_contact_phone && (
+                      <a
+                        href={`tel:${(selectedTicket as any).site_contact_phone}`}
+                        className="text-blue-600 hover:underline font-medium"
+                      >
+                        {(selectedTicket as any).site_contact_phone}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
               {selectedTicket.customers.address && (
                 <a

@@ -27,6 +27,8 @@ export function CustomersView() {
     state: '',
     zip_code: '',
     notes: '',
+    site_contact_name: '',
+    site_contact_phone: '',
   });
   const [autoGeocode, setAutoGeocode] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
@@ -244,6 +246,8 @@ export function CustomersView() {
                     state: '',
                     zip_code: '',
                     notes: '',
+                    site_contact_name: '',
+                    site_contact_phone: '',
                   });
                 }}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -293,6 +297,8 @@ export function CustomersView() {
                     state: '',
                     zip_code: '',
                     notes: '',
+                    site_contact_name: '',
+                    site_contact_phone: '',
                   });
                   setGeocodeStatus(null);
                   loadCustomers();
@@ -339,6 +345,34 @@ export function CustomersView() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="input"
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Site Contact Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.site_contact_name}
+                    onChange={(e) => setFormData({ ...formData, site_contact_name: e.target.value })}
+                    className="input"
+                    placeholder="On-site contact person"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Site Contact Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.site_contact_phone}
+                    onChange={(e) => setFormData({ ...formData, site_contact_phone: e.target.value })}
                     className="input"
                     placeholder="(555) 123-4567"
                   />
@@ -495,6 +529,8 @@ export function CustomersView() {
               state: selectedCustomer.state || '',
               zip_code: selectedCustomer.zip_code || '',
               notes: selectedCustomer.notes || '',
+              site_contact_name: (selectedCustomer as any).site_contact_name || '',
+              site_contact_phone: (selectedCustomer as any).site_contact_phone || '',
             });
           }}
           onDelete={async () => {
@@ -540,6 +576,8 @@ export function CustomersView() {
                     state: '',
                     zip_code: '',
                     notes: '',
+                    site_contact_name: '',
+                    site_contact_phone: '',
                   });
                 }}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -613,6 +651,34 @@ export function CustomersView() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="input"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Site Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.site_contact_name}
+                      onChange={(e) => setFormData({ ...formData, site_contact_name: e.target.value })}
+                      className="input"
+                      placeholder="On-site contact person"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Site Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.site_contact_phone}
+                      onChange={(e) => setFormData({ ...formData, site_contact_phone: e.target.value })}
+                      className="input"
+                      placeholder="(555) 123-4567"
                     />
                   </div>
                 </div>

@@ -247,6 +247,26 @@ export function CustomerDetailModal({ customer, onClose, onEdit, onDelete }: Cus
                 </div>
               )}
 
+              {((customer as any).site_contact_name || (customer as any).site_contact_phone) && (
+                <div className="flex items-start space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Phone className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Site Contact</p>
+                    {(customer as any).site_contact_name && (
+                      <p className="text-gray-900 dark:text-white font-medium">{(customer as any).site_contact_name}</p>
+                    )}
+                    {(customer as any).site_contact_phone && (
+                      <a
+                        href={`tel:${(customer as any).site_contact_phone}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {(customer as any).site_contact_phone}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {customer.address && (
                 <div className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />

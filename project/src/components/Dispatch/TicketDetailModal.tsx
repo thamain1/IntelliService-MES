@@ -448,6 +448,19 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       {ticket.customers?.address && `${ticket.customers.address}, ${ticket.customers.city}, ${ticket.customers.state}`}
                     </p>
+                    {((ticket as any).site_contact_name || (ticket as any).site_contact_phone) && (
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Site Contact</p>
+                        {(ticket as any).site_contact_name && (
+                          <p className="text-sm text-gray-900 dark:text-white">{(ticket as any).site_contact_name}</p>
+                        )}
+                        {(ticket as any).site_contact_phone && (
+                          <a href={`tel:${(ticket as any).site_contact_phone}`} className="text-sm text-blue-600 hover:underline">
+                            {(ticket as any).site_contact_phone}
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
