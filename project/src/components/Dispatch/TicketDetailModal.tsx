@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, User, Calendar, MapPin, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play } from 'lucide-react';
+import { X, Clock, User, Calendar, MapPin, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 
@@ -663,6 +663,45 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                 </div>
               </div>
             </div>
+
+            {/* Problem and Resolution Codes */}
+            {((ticket as any).problem_code || (ticket as any).resolution_code) && (
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-indigo-800 dark:text-indigo-200 mb-3 flex items-center">
+                  <Tag className="w-4 h-4 mr-2" />
+                  Diagnostic Codes
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(ticket as any).problem_code && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Problem Found</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{(ticket as any).problem_code}</p>
+                    </div>
+                  )}
+                  {(ticket as any).resolution_code && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Resolution Applied</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{(ticket as any).resolution_code}</p>
+                    </div>
+                  )}
+                </div>
+                {/* Show flags if set */}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {(ticket as any).sales_opportunity_flag && (
+                    <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs font-medium rounded">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      Sales Opportunity
+                    </span>
+                  )}
+                  {(ticket as any).urgent_review_flag && (
+                    <span className="inline-flex items-center px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-xs font-medium rounded">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Urgent Review Required
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div>
               <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center">

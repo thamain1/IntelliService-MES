@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Database } from '../../lib/database.types';
@@ -8,6 +8,14 @@ type Customer = Database['public']['Tables']['customers']['Row'];
 type Equipment = Database['public']['Tables']['equipment']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
+
+interface StandardCode {
+  code: string;
+  label: string;
+  description: string | null;
+  category: string | null;
+  is_critical_safety: boolean;
+}
 
 interface NewTicketModalProps {
   isOpen: boolean;
@@ -24,8 +32,10 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [technicians, setTechnicians] = useState<Profile[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [problemCodes, setProblemCodes] = useState<StandardCode[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [filteredEquipment, setFilteredEquipment] = useState<Equipment[]>([]);
+  const [showGasLeakWarning, setShowGasLeakWarning] = useState(false);
 
   const [formData, setFormData] = useState({
     ticket_type: defaultType,
@@ -43,6 +53,7 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
     technician_notes: '',
     site_contact_name: '',
     site_contact_phone: '',
+    problem_code: '',
   });
 
   useEffect(() => {
@@ -62,7 +73,7 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
 
   const loadData = async () => {
     try {
-      const [customersRes, equipmentRes, techniciansRes, projectsRes] = await Promise.all([
+      const [customersRes, equipmentRes, techniciansRes, projectsRes, problemCodesRes] = await Promise.all([
         supabase.from('customers').select('*').order('name'),
         supabase.from('equipment').select('*'),
         supabase
@@ -76,12 +87,19 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
           .select('*')
           .in('status', ['planning', 'in_progress'])
           .order('name'),
+        supabase
+          .from('standard_codes')
+          .select('code, label, description, category, is_critical_safety')
+          .eq('code_type', 'problem')
+          .eq('is_active', true)
+          .order('sort_order'),
       ]);
 
       if (customersRes.data) setCustomers(customersRes.data);
       if (equipmentRes.data) setEquipment(equipmentRes.data);
       if (techniciansRes.data) setTechnicians(techniciansRes.data);
       if (projectsRes.data) setProjects(projectsRes.data);
+      if (problemCodesRes.data) setProblemCodes(problemCodesRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -113,6 +131,7 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
       if (formData.technician_notes) insertData.technician_notes = formData.technician_notes;
       if (formData.site_contact_name) insertData.site_contact_name = formData.site_contact_name;
       if (formData.site_contact_phone) insertData.site_contact_phone = formData.site_contact_phone;
+      if (formData.problem_code) insertData.problem_code = formData.problem_code;
 
       const { error } = await supabase.from('tickets').insert(insertData);
 
@@ -139,8 +158,10 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
         technician_notes: '',
         site_contact_name: '',
         site_contact_phone: '',
+        problem_code: '',
       });
       setSelectedCustomer('');
+      setShowGasLeakWarning(false);
       onSuccess();
       onClose();
     } catch (error) {
@@ -357,24 +378,70 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Service Type *
-            </label>
-            <select
-              required
-              value={formData.service_type}
-              onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
-              className="input"
-            >
-              <option value="">Select service type</option>
-              <option value="Preventive Maintenance">Preventive Maintenance</option>
-              <option value="Repair">Repair</option>
-              <option value="Installation">Installation</option>
-              <option value="Emergency Service">Emergency Service</option>
-              <option value="Inspection">Inspection</option>
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Service Type *
+              </label>
+              <select
+                required
+                value={formData.service_type}
+                onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
+                className="input"
+              >
+                <option value="">Select service type</option>
+                <option value="Preventive Maintenance">Preventive Maintenance</option>
+                <option value="Repair">Repair</option>
+                <option value="Installation">Installation</option>
+                <option value="Emergency Service">Emergency Service</option>
+                <option value="Inspection">Inspection</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Problem Code (Optional)
+              </label>
+              <select
+                value={formData.problem_code}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  const selectedCode = problemCodes.find(c => c.code === code);
+                  setFormData({ ...formData, problem_code: code });
+                  if (selectedCode?.is_critical_safety) {
+                    setShowGasLeakWarning(true);
+                  } else {
+                    setShowGasLeakWarning(false);
+                  }
+                }}
+                className="input"
+              >
+                <option value="">Select problem code</option>
+                {problemCodes.map((code) => (
+                  <option key={code.code} value={code.code}>
+                    {code.label}
+                  </option>
+                ))}
+              </select>
+              {formData.problem_code && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {problemCodes.find(c => c.code === formData.problem_code)?.description}
+                </p>
+              )}
+            </div>
           </div>
+
+          {showGasLeakWarning && (
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start space-x-3">
+              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <div>
+                <h4 className="font-bold text-red-800 dark:text-red-200">CRITICAL SAFETY ALERT</h4>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Gas leak detected. Follow all safety protocols. Evacuate if necessary and contact emergency services if required.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

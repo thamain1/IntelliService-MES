@@ -85,6 +85,16 @@ type Part = {
   unit_price: number;
 };
 
+type StandardCode = {
+  code: string;
+  label: string;
+  description: string | null;
+  category: string | null;
+  is_critical_safety: boolean;
+  triggers_sales_lead: boolean;
+  triggers_urgent_review: boolean;
+};
+
 export function TechnicianTicketView() {
   const { profile } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -108,6 +118,11 @@ export function TechnicianTicketView() {
   const [showCompletionSuccess, setShowCompletionSuccess] = useState(false);
   const [showNeedPartsModal, setShowNeedPartsModal] = useState(false);
   const [allParts, setAllParts] = useState<Part[]>([]);
+  const [problemCodes, setProblemCodes] = useState<StandardCode[]>([]);
+  const [resolutionCodes, setResolutionCodes] = useState<StandardCode[]>([]);
+  const [selectedProblemCode, setSelectedProblemCode] = useState('');
+  const [selectedResolutionCode, setSelectedResolutionCode] = useState('');
+  const [showGasLeakWarning, setShowGasLeakWarning] = useState(false);
   const [needPartsFormData, setNeedPartsFormData] = useState({
     part_id: '',
     quantity: 1,
@@ -143,6 +158,7 @@ export function TechnicianTicketView() {
     loadCompletedTickets();
     checkActiveTimer();
     checkShiftClockIn();
+    loadStandardCodes();
   }, [profile?.id]);
 
   useEffect(() => {
@@ -195,6 +211,30 @@ export function TechnicianTicketView() {
     } catch (error) {
       console.error('Error checking shift clock-in:', error);
       setIsShiftClockedIn(false);
+    }
+  };
+
+  const loadStandardCodes = async () => {
+    try {
+      const [problemRes, resolutionRes] = await Promise.all([
+        supabase
+          .from('standard_codes')
+          .select('code, label, description, category, is_critical_safety, triggers_sales_lead, triggers_urgent_review')
+          .eq('code_type', 'problem')
+          .eq('is_active', true)
+          .order('sort_order'),
+        supabase
+          .from('standard_codes')
+          .select('code, label, description, category, is_critical_safety, triggers_sales_lead, triggers_urgent_review')
+          .eq('code_type', 'resolution')
+          .eq('is_active', true)
+          .order('sort_order'),
+      ]);
+
+      if (problemRes.data) setProblemCodes(problemRes.data);
+      if (resolutionRes.data) setResolutionCodes(resolutionRes.data);
+    } catch (error) {
+      console.error('Error loading standard codes:', error);
     }
   };
 
@@ -561,6 +601,13 @@ export function TechnicianTicketView() {
         // Add completed_date if marking as completed
         if (isCompletingTicket) {
           ticketUpdateData.completed_date = new Date().toISOString();
+          // Include problem and resolution codes when completing
+          if (selectedProblemCode) {
+            ticketUpdateData.problem_code = selectedProblemCode;
+          }
+          if (selectedResolutionCode) {
+            ticketUpdateData.resolution_code = selectedResolutionCode;
+          }
         }
 
         const { error: ticketError } = await supabase
@@ -591,6 +638,9 @@ export function TechnicianTicketView() {
       await loadMyTickets();
 
       setShowUpdateModal(false);
+      setSelectedProblemCode('');
+      setSelectedResolutionCode('');
+      setShowGasLeakWarning(false);
       setUpdateFormData({
         update_type: 'progress_note',
         notes: '',
@@ -1284,20 +1334,109 @@ export function TechnicianTicketView() {
                 </div>
 
                 {updateFormData.update_type === 'completed' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      New Status
-                    </label>
-                    <select
-                      value={updateFormData.status}
-                      onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
-                      className="input"
-                    >
-                      <option value="">Keep Current</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        New Status
+                      </label>
+                      <select
+                        value={updateFormData.status}
+                        onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
+                        className="input"
+                      >
+                        <option value="">Keep Current</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+
+                    {updateFormData.status === 'completed' && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-4 border border-blue-200 dark:border-blue-800">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          Completion Codes (Required for Analytics)
+                        </p>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Problem Code *
+                          </label>
+                          <select
+                            required
+                            value={selectedProblemCode}
+                            onChange={(e) => {
+                              const code = e.target.value;
+                              const selectedCode = problemCodes.find(c => c.code === code);
+                              setSelectedProblemCode(code);
+                              if (selectedCode?.is_critical_safety) {
+                                setShowGasLeakWarning(true);
+                              } else {
+                                setShowGasLeakWarning(false);
+                              }
+                            }}
+                            className="input"
+                          >
+                            <option value="">Select problem found</option>
+                            {problemCodes.map((code) => (
+                              <option key={code.code} value={code.code}>
+                                {code.label}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedProblemCode && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {problemCodes.find(c => c.code === selectedProblemCode)?.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {showGasLeakWarning && (
+                          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start space-x-2">
+                            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                            <div>
+                              <p className="font-bold text-red-800 dark:text-red-200 text-sm">SAFETY ALERT</p>
+                              <p className="text-xs text-red-700 dark:text-red-300">Gas leak documented. Ensure all safety protocols followed.</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Resolution Code *
+                          </label>
+                          <select
+                            required
+                            value={selectedResolutionCode}
+                            onChange={(e) => setSelectedResolutionCode(e.target.value)}
+                            className="input"
+                          >
+                            <option value="">Select action taken</option>
+                            {resolutionCodes.map((code) => (
+                              <option key={code.code} value={code.code}>
+                                {code.label}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedResolutionCode && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {resolutionCodes.find(c => c.code === selectedResolutionCode)?.description}
+                            </p>
+                          )}
+                          {resolutionCodes.find(c => c.code === selectedResolutionCode)?.triggers_urgent_review && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                              Note: This will flag the ticket for urgent management review.
+                            </p>
+                          )}
+                        </div>
+
+                        {(problemCodes.find(c => c.code === selectedProblemCode)?.triggers_sales_lead ||
+                          resolutionCodes.find(c => c.code === selectedResolutionCode)?.triggers_sales_lead) && (
+                          <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            This ticket will be flagged as a sales opportunity.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="flex space-x-3 pt-4">

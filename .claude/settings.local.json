@@ -25,7 +25,16 @@
       "Bash(git rev-list:*)",
       "Bash(git cat-file:*)",
       "Bash(git count-objects:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git -C /c/dev/intelliservicebeta/project status)",
+      "Bash(git -C /c/dev/intelliservicebeta/project log --oneline -5)",
+      "Bash(git -C /c/dev/intelliservicebeta/project commit -m \"$\\(cat <<''EOF''\nAdd technician workflow improvements\n\n- Require clock-in before starting work on tickets with popup alert\n- Add \"Get Directions\" button to open maps for customer location\n- Fix ticket completion flow with success modal and clear feedback\n- Hide Quick Actions for completed tickets, show completion indicator\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /c/dev/intelliservicebeta/project push)",
+      "Bash(git -C /c/dev/intelliservicebeta/project diff --stat)",
+      "Bash(git -C /c/dev/intelliservicebeta/project add src/components/Tickets/TechnicianTicketView.tsx)",
+      "Bash(git -C /c/dev/intelliservicebeta/project commit -m \"$\\(cat <<''EOF''\nImprove parts workflow for technicians\n\n- Add Part modal now only shows parts from truck inventory \\(no fallback\\)\n- Shows \"No Parts on Truck\" message with link to request parts\n- New \"Need Parts\" modal with proper form instead of prompts\n- Tech can select specific part from catalog, set quantity and urgency\n- Ticket goes on hold when parts are requested\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /c/dev/intelliservicebeta/project add src/components/Parts/PartsView.tsx)",
+      "Bash(git -C /c/dev/intelliservicebeta/project commit -m \"$\\(cat <<''EOF''\nFix Parts Management low stock count to match Dashboard\n\nBoth Dashboard and Parts Management now use vw_reorder_alerts\nto count low stock items, ensuring consistent numbers.\n\nThe view considers reserved qty, inbound POs, and dynamic\nreorder points based on usage patterns.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
