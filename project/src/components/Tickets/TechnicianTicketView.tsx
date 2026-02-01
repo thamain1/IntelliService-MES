@@ -549,6 +549,18 @@ export function TechnicianTicketView() {
 
     const isCompletingTicket = updateFormData.status === 'completed';
 
+    // Validate required codes when completing ticket
+    if (isCompletingTicket) {
+      if (!selectedProblemCode) {
+        alert('Problem Code is required when completing a ticket.');
+        return;
+      }
+      if (!selectedResolutionCode) {
+        alert('Resolution Code is required when completing a ticket.');
+        return;
+      }
+    }
+
     try {
       // Get current user ID
       const { data: { user } } = await supabase.auth.getUser();

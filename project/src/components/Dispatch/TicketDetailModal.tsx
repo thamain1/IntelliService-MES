@@ -313,6 +313,18 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
   const handleUpdate = async () => {
     if (!ticket) return;
 
+    // Validate required codes when completing ticket
+    if (status === 'completed') {
+      if (!problemCode) {
+        alert('Problem Code is required when completing a ticket.');
+        return;
+      }
+      if (!resolutionCode) {
+        alert('Resolution Code is required when completing a ticket.');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const updates: any = {
