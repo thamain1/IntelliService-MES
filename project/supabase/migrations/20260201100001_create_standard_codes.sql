@@ -48,7 +48,7 @@ CREATE POLICY "Only admins can insert standard codes"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 
@@ -59,7 +59,7 @@ CREATE POLICY "Only admins can update standard codes"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 

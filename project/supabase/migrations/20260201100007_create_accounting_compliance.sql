@@ -126,7 +126,7 @@ CREATE POLICY "Only admins can modify periods"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 
@@ -138,7 +138,7 @@ CREATE POLICY "Audit log viewable by admins"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 
@@ -155,7 +155,7 @@ CREATE POLICY "Only admins can modify tax jurisdictions"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 
@@ -167,7 +167,7 @@ CREATE POLICY "Tax ledger viewable by admins and accountants"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner', 'accountant')
+            AND profiles.role = 'admin'
         )
     );
 

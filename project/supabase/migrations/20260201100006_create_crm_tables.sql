@@ -97,7 +97,7 @@ CREATE POLICY "Only admins can modify pipelines"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 
@@ -116,7 +116,7 @@ CREATE POLICY "Only admins can modify stages"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role IN ('admin', 'owner')
+            AND profiles.role = 'admin'
         )
     );
 
@@ -139,7 +139,7 @@ CREATE POLICY "Users can update their own interactions"
     USING (created_by = auth.uid() OR EXISTS (
         SELECT 1 FROM profiles
         WHERE profiles.id = auth.uid()
-        AND profiles.role IN ('admin', 'owner', 'dispatcher')
+        AND profiles.role IN ('admin', 'dispatcher')
     ));
 
 -- Seed default pipeline
