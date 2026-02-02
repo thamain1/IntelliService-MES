@@ -117,6 +117,7 @@ function AppContent() {
       case 'dispatch-map':
         return <DispatchMapView />;
       case 'parts':
+      case 'parts-requests':
       case 'parts-inventory':
       case 'parts-purchase-orders':
       case 'parts-transfers':
