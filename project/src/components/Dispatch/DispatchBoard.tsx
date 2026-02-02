@@ -58,13 +58,13 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
       const [scheduledTicketsResult, unscheduledTicketsResult, techsResult] = await Promise.all([
         supabase
           .from('tickets')
-          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), ticket_assignments(technician_id, role, profiles(full_name))')
+          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), ticket_assignments(technician_id, role, profiles!ticket_assignments_technician_id_fkey(full_name))')
           .gte('scheduled_date', startOfDay.toISOString())
           .lte('scheduled_date', endOfDay.toISOString())
           .order('scheduled_date', { ascending: true }),
         supabase
           .from('tickets')
-          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), ticket_assignments(technician_id, role, profiles(full_name))')
+          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), ticket_assignments(technician_id, role, profiles!ticket_assignments_technician_id_fkey(full_name))')
           .is('scheduled_date', null)
           .in('status', ['open', 'scheduled'])
           .order('priority', { ascending: false }),

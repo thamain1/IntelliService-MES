@@ -90,7 +90,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
     try {
       let query = supabase
         .from('tickets')
-        .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), equipment(model_number, manufacturer), ticket_assignments(technician_id, role, profiles(full_name)), hold_active, hold_type, hold_parts_active, hold_issue_active, revisit_required')
+        .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), equipment(model_number, manufacturer), ticket_assignments(technician_id, role, profiles!ticket_assignments_technician_id_fkey(full_name)), hold_active, hold_type, hold_parts_active, hold_issue_active, revisit_required')
         .order('created_at', { ascending: false });
 
       if (profile?.role === 'technician') {
