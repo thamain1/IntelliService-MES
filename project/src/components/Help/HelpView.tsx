@@ -23,6 +23,10 @@ import {
   Zap,
   Phone,
   Mail,
+  PauseCircle,
+  ShoppingCart,
+  PackageCheck,
+  Bell,
 } from 'lucide-react';
 
 interface Section {
@@ -377,6 +381,142 @@ export function HelpView() {
             <p className="text-gray-600 dark:text-gray-300">
               Move parts between locations: select the part, choose source and destination, enter quantity, and complete the transfer.
             </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'hold-for-parts',
+      title: 'Hold for Parts Workflow',
+      icon: PauseCircle,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              <span className="font-medium">Overview:</span> The Hold for Parts workflow ensures tickets are never lost when waiting for parts.
+              It creates an automated link from technician request through purchasing to receiving, with automatic ticket updates.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Complete Workflow</h3>
+            <div className="space-y-4">
+              {/* Step 1 */}
+              <div className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                    <PauseCircle className="w-4 h-4" /> Technician Requests Parts
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    From the ticket, technician clicks <span className="font-medium">"Need Parts"</span>, selects required parts, sets urgency level, and submits.
+                    The ticket is automatically placed on hold.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">2</div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4" /> Purchasing Creates PO
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    Go to <span className="font-medium">Parts Management → Parts Requests</span>. Review pending requests sorted by urgency.
+                    Click <span className="font-medium">"Create Purchase Order"</span> to auto-populate a PO with the requested parts linked to the ticket.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">3</div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                    <PackageCheck className="w-4 h-4" /> Warehouse Receives Parts
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    When receiving the PO, the system shows which parts are linked to waiting tickets.
+                    Upon completing receiving, the system <span className="font-medium">automatically</span>:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 mt-2 ml-4">
+                    <li>Removes the hold from the ticket</li>
+                    <li>Changes ticket status to "Scheduled" (ready for dispatch)</li>
+                    <li>Adds a ticket update noting parts are ready</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">4</div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                    <Bell className="w-4 h-4" /> Dispatcher Reschedules
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    The dispatcher sees the ticket is ready and can reschedule the technician to complete the job.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Parts Request Queue</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              Access via <span className="font-medium">Parts Management → Parts Requests</span>. The queue shows:
+            </p>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <li><span className="font-medium">Urgency Sorting</span> - Critical requests appear first</li>
+              <li><span className="font-medium">Days Waiting</span> - Track how long each request has been pending</li>
+              <li><span className="font-medium">SLA Alerts</span> - Requests waiting more than 5 days are flagged</li>
+              <li><span className="font-medium">Quick PO Creation</span> - One click to create a linked Purchase Order</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Urgency Levels</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Level</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">When to Use</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr>
+                    <td className="px-4 py-2"><span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Critical</span></td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Customer has no heat/AC, emergency situation</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2"><span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">High</span></td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">System degraded, customer uncomfortable</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2"><span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Medium</span></td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Standard repair, customer can wait a few days</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2"><span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">Low</span></td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Preventive maintenance, non-urgent upgrade</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">Best Practices</h4>
+            <ul className="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+              <li>Technicians should always select specific parts from the catalog when possible</li>
+              <li>Include clear notes about why the part is needed</li>
+              <li>Purchasing should review the Parts Request Queue daily</li>
+              <li>Monitor SLA breaches to prevent customer delays</li>
+              <li>Keep vendor lead times updated for accurate delivery expectations</li>
+            </ul>
           </div>
         </div>
       ),
