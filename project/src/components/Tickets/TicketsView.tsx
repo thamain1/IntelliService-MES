@@ -19,15 +19,43 @@ import { NewTicketModal } from './NewTicketModal';
 import { TicketDetailModal } from '../Dispatch/TicketDetailModal';
 import { TechnicianTicketView } from './TechnicianTicketView';
 
+type TicketAssignment = {
+  technician_id: string;
+  role: string | null;
+  profiles: { full_name: string } | null;
+};
+
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customers?: { name: string };
   profiles?: { full_name: string };
   equipment?: { model_number: string; manufacturer: string };
+  ticket_assignments?: TicketAssignment[];
   hold_active?: boolean;
   hold_type?: string | null;
   hold_parts_active?: boolean;
   hold_issue_active?: boolean;
   revisit_required?: boolean;
+};
+
+// Helper to get effective assigned tech name
+const getAssignedTechName = (ticket: Ticket): string => {
+  // First check tickets.assigned_to (via profiles relation)
+  if (ticket.profiles?.full_name) {
+    return ticket.profiles.full_name;
+  }
+  // Fallback to ticket_assignments - prefer lead, then first
+  if (ticket.ticket_assignments && ticket.ticket_assignments.length > 0) {
+    const lead = ticket.ticket_assignments.find(ta => ta.role === 'lead');
+    if (lead?.profiles?.full_name) {
+      return lead.profiles.full_name;
+    }
+    // Return first assignment's name
+    const first = ticket.ticket_assignments[0];
+    if (first?.profiles?.full_name) {
+      return first.profiles.full_name;
+    }
+  }
+  return 'Unassigned';
 };
 
 interface TicketsViewProps {
@@ -62,7 +90,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
     try {
       let query = supabase
         .from('tickets')
-        .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), equipment(model_number, manufacturer), hold_active, hold_type, hold_parts_active, hold_issue_active, revisit_required')
+        .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), equipment(model_number, manufacturer), ticket_assignments(technician_id, role, profiles(full_name)), hold_active, hold_type, hold_parts_active, hold_issue_active, revisit_required')
         .order('created_at', { ascending: false });
 
       if (profile?.role === 'technician') {
@@ -119,7 +147,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
       ticket.customers?.name || '',
       ticket.status || '',
       ticket.priority || '',
-      ticket.profiles?.full_name || 'Unassigned',
+      getAssignedTechName(ticket),
       ticket.scheduled_date || '',
       ticket.created_at || '',
     ]);
@@ -375,7 +403,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-gray-900 dark:text-white">
-                          {ticket.profiles?.full_name || 'Unassigned'}
+                          {getAssignedTechName(ticket)}
                         </span>
                       </td>
                       <td className="px-6 py-4">

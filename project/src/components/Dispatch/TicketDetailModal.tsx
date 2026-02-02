@@ -38,6 +38,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
   const [status, setStatus] = useState<string>('');
   const [problemCode, setProblemCode] = useState<string | null>(null);
   const [resolutionCode, setResolutionCode] = useState<string | null>(null);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
   const [assignments, setAssignments] = useState<TicketAssignment[]>([]);
   const [technicians, setTechnicians] = useState<Profile[]>([]);
   const [showAddTechnician, setShowAddTechnician] = useState(false);
@@ -93,6 +94,14 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
         setStatus(data.status);
         setProblemCode((data as any).problem_code || null);
         setResolutionCode((data as any).resolution_code || null);
+        // Format date for datetime-local input (YYYY-MM-DDTHH:MM)
+        if (data.scheduled_date) {
+          const date = new Date(data.scheduled_date);
+          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+          setScheduledDate(localDate.toISOString().slice(0, 16));
+        } else {
+          setScheduledDate('');
+        }
       }
     } catch (error) {
       console.error('Error loading ticket:', error);
@@ -338,6 +347,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
         hours_onsite: hoursOnsite ? parseFloat(hoursOnsite) : null,
         problem_code: problemCode,
         resolution_code: resolutionCode,
+        scheduled_date: scheduledDate ? new Date(scheduledDate).toISOString() : null,
       };
 
       if (status === 'completed' && !ticket.completed_date) {
@@ -662,15 +672,20 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                     <Calendar className="w-4 h-4 mr-2" />
                     Schedule
                   </h4>
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Scheduled:{' '}
-                      {ticket.scheduled_date
-                        ? new Date(ticket.scheduled_date).toLocaleString()
-                        : 'Not scheduled'}
-                    </p>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Scheduled Date & Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={scheduledDate}
+                        onChange={(e) => setScheduledDate(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
                     {ticket.completed_date && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Completed: {new Date(ticket.completed_date).toLocaleString()}
                       </p>
                     )}

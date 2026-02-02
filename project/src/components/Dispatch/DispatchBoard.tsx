@@ -4,9 +4,30 @@ import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { TicketDetailModal } from './TicketDetailModal';
 
+type TicketAssignment = {
+  technician_id: string;
+  role: string | null;
+  profiles: { full_name: string } | null;
+};
+
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customers?: { name: string };
   profiles?: { full_name: string };
+  ticket_assignments?: TicketAssignment[];
+};
+
+// Helper to get effective assigned tech name
+const getAssignedTechName = (ticket: Ticket): string | null => {
+  if (ticket.profiles?.full_name) {
+    return ticket.profiles.full_name;
+  }
+  if (ticket.ticket_assignments && ticket.ticket_assignments.length > 0) {
+    const lead = ticket.ticket_assignments.find(ta => ta.role === 'lead');
+    if (lead?.profiles?.full_name) return lead.profiles.full_name;
+    const first = ticket.ticket_assignments[0];
+    if (first?.profiles?.full_name) return first.profiles.full_name;
+  }
+  return null;
 };
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -37,13 +58,13 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
       const [scheduledTicketsResult, unscheduledTicketsResult, techsResult] = await Promise.all([
         supabase
           .from('tickets')
-          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name)')
+          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), ticket_assignments(technician_id, role, profiles(full_name))')
           .gte('scheduled_date', startOfDay.toISOString())
           .lte('scheduled_date', endOfDay.toISOString())
           .order('scheduled_date', { ascending: true }),
         supabase
           .from('tickets')
-          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name)')
+          .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), ticket_assignments(technician_id, role, profiles(full_name))')
           .is('scheduled_date', null)
           .in('status', ['open', 'scheduled'])
           .order('priority', { ascending: false }),
@@ -99,21 +120,38 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
       const scheduledDate = new Date(selectedDate);
       scheduledDate.setHours(timeSlot, 0, 0, 0);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tickets')
         .update({
           assigned_to: technicianId,
           scheduled_date: scheduledDate.toISOString(),
           status: 'scheduled',
         })
-        .eq('id', draggedTicket.id);
+        .eq('id', draggedTicket.id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('No ticket was updated. You may not have permission to modify this ticket.');
+      }
 
       await loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating ticket:', error);
-      alert('Failed to assign ticket. Please try again.');
+      let errorMessage = 'Failed to assign ticket. Please try again.';
+      if (error?.message) {
+        if (error.message.includes('permission denied') || error.message.includes('policy') || error.code === 'PGRST116') {
+          errorMessage = 'You do not have permission to update this ticket. Please contact your administrator.';
+        } else {
+          errorMessage = `Failed to assign ticket: ${error.message}`;
+        }
+      }
+      alert(errorMessage);
     } finally {
       setDraggedTicket(null);
     }
@@ -237,11 +275,11 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                     {ticket.customers?.name}
                   </p>
-                  {ticket.profiles?.full_name && (
+                  {getAssignedTechName(ticket) && (
                     <div className="flex items-center space-x-1 mt-1">
                       <User className="w-3 h-3 text-blue-500" />
                       <span className="text-xs text-blue-600 dark:text-blue-400">
-                        {ticket.profiles.full_name}
+                        {getAssignedTechName(ticket)}
                       </span>
                     </div>
                   )}
