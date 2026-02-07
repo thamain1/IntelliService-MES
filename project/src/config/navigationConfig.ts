@@ -42,6 +42,8 @@ import {
   Factory,
   Layers,
   Truck,
+  Tag,
+  Gauge,
 } from 'lucide-react';
 
 export interface NavigationItem {
@@ -234,13 +236,37 @@ export const navigationConfig: NavigationGroup[] = [
     id: 'production',
     label: 'Production',
     icon: Factory,
-    roles: ['admin', 'dispatcher', 'material_handler'],
+    roles: ['admin', 'dispatcher', 'operator', 'supervisor', 'material_handler'],
     children: [
       {
         id: 'production-dashboard',
         label: 'Production Dashboard',
         icon: Factory,
-        roles: ['admin', 'dispatcher'],
+        roles: ['admin', 'dispatcher', 'supervisor'],
+      },
+      {
+        id: 'production-work-orders',
+        label: 'Work Orders',
+        icon: ClipboardList,
+        roles: ['admin', 'dispatcher', 'operator', 'supervisor'],
+      },
+      {
+        id: 'production-scheduling',
+        label: 'Production Scheduling',
+        icon: Calendar,
+        roles: ['admin', 'dispatcher', 'supervisor'],
+      },
+      {
+        id: 'production-oee',
+        label: 'OEE Dashboard',
+        icon: Gauge,
+        roles: ['admin', 'dispatcher', 'supervisor'],
+      },
+      {
+        id: 'production-downtime',
+        label: 'Downtime Log',
+        icon: AlertTriangle,
+        roles: ['admin', 'dispatcher', 'operator', 'supervisor'],
       },
       {
         id: 'production-work-centers',
@@ -253,6 +279,12 @@ export const navigationConfig: NavigationGroup[] = [
         label: 'Material Moves',
         icon: Truck,
         roles: ['admin', 'dispatcher', 'material_handler'],
+      },
+      {
+        id: 'production-reason-codes',
+        label: 'Reason Codes',
+        icon: Tag,
+        roles: ['admin'],
       },
     ],
   },

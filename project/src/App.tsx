@@ -41,6 +41,12 @@ const HelpView = lazy(() => import('./components/Help/HelpView').then(m => ({ de
 const CRMView = lazy(() => import('./components/CRM/CRMView').then(m => ({ default: m.CRMView })));
 const ProductionDashboard = lazy(() => import('./components/Manufacturing/ProductionDashboard').then(m => ({ default: m.ProductionDashboard })));
 const MaterialHandlerView = lazy(() => import('./components/Manufacturing/MaterialHandlerView').then(m => ({ default: m.MaterialHandlerView })));
+const WorkOrdersView = lazy(() => import('./components/Manufacturing/WorkOrders/WorkOrdersView').then(m => ({ default: m.WorkOrdersView })));
+const WorkOrderDetail = lazy(() => import('./components/Manufacturing/WorkOrders/WorkOrderDetail').then(m => ({ default: m.WorkOrderDetail })));
+const ProductionSchedulingView = lazy(() => import('./components/Manufacturing/ProductionScheduling/ProductionSchedulingView').then(m => ({ default: m.ProductionSchedulingView })));
+const OEEDashboard = lazy(() => import('./components/Manufacturing/OEE/OEEDashboard').then(m => ({ default: m.OEEDashboard })));
+const DowntimeLogView = lazy(() => import('./components/Manufacturing/Downtime/DowntimeLogView').then(m => ({ default: m.DowntimeLogView })));
+const ReasonCodesView = lazy(() => import('./components/Manufacturing/ReasonCodes/ReasonCodesView').then(m => ({ default: m.ReasonCodesView })));
 
 // Loading spinner for Suspense fallback
 const LoadingSpinner = () => (
@@ -238,10 +244,22 @@ function AppContent() {
       case 'production':
       case 'production-dashboard':
         return <ProductionDashboard />;
+      case 'production-work-orders':
+        return <WorkOrdersView />;
+      case 'production-work-order-detail':
+        return <WorkOrderDetail />;
+      case 'production-scheduling':
+        return <ProductionSchedulingView />;
+      case 'production-oee':
+        return <OEEDashboard />;
+      case 'production-downtime':
+        return <DowntimeLogView />;
       case 'production-work-centers':
         return <ProductionDashboard initialView="work-centers" />;
       case 'production-material-moves':
         return <MaterialHandlerView />;
+      case 'production-reason-codes':
+        return <ReasonCodesView />;
       default:
         return <DashboardView />;
     }
