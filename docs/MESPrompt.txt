@@ -1,0 +1,507 @@
+Implement MES enhancements using the terms Work Orders + Production Scheduling (never “Dispatch” and avoid generic “Scheduling”) to prevent collisions with Field Service dispatch/scheduling. Preserve all existing workflows and data structures.
+
+NON-NEGOTIABLE CONSTRAINTS
+
+Additive-only changes
+
+Do not drop/rename tables/columns/functions/routes used by existing modules.
+
+Only add new tables, new nullable columns, views, indexes, RPCs, and compatibility layers.
+
+No regressions
+Must not break: Tickets, Projects, Invoicing, Inventory, Serialization parent-child, Vehicles/warehouse locations, Time Clock, Payroll, Accounting/GL, Customer views/revenue rollups, Reports, Imports/migrations.
+
+Single source of truth
+
+No “second inventory.” All MES material consumption/completions must write through the existing inventory transaction/ledger pipeline.
+
+Warehouses + vehicles must reconcile consistently across all screens.
+
+Accounting integrity
+
+MES must not post directly to GL unless the existing system already does so via inventory posting.
+
+All posting must be idempotent (no double-posting) with auditable reference keys.
+
+No seeded demo/test data in production
+
+Schema + wiring only. Test data only in dev/test.
+
+PHASE 1 — Terminology, Navigation, and Route Namespacing (No Schema Changes)
+UI Language Rules
+
+Use “Production Scheduling” everywhere in MES.
+
+Never use “Dispatch” or “Scheduling” alone in MES UI.
+
+Field Service keeps its existing “Dispatch/Tech Dispatching/Scheduling” language unchanged.
+
+Routes (hard requirement)
+
+MES routes MUST be under /production/* (or /mes/*), e.g.:
+
+/production/work-orders
+
+/production/production-scheduling
+
+/production/oee
+
+/production/downtime
+
+/production/reason-codes
+
+Menu Keys (collision-proofing)
+
+Ensure left-nav item IDs/keys are unique and prefixed, e.g. prod.workOrders, prod.productionScheduling.
+
+Do not reuse service-side nav keys, route names, or components.
+
+Deep-link reliability (must)
+
+Every MES route must load correctly on full refresh (no dependency on visiting another module first).
+
+Fix any router/layout state that causes “blank until you click elsewhere.”
+
+Acceptance checks
+
+No MES UI strings contain “Dispatch.”
+
+No MES UI uses “Scheduling” without the word “Production.”
+
+All MES routes render via direct URL load and browser refresh.
+
+PHASE 2 — Schema Extensions (Additive Only, Compatible With Existing Tables)
+
+Goal: Add primitives for Production Scheduling, Downtime, OEE, Counts, Material Consumption, Audit, and Idempotency.
+Existing tables to keep: production_orders, production_steps, work_centers, bill_of_materials, production_time_logs, material_move_requests, wip_tracking.
+
+2.1 Plant Hierarchy (rollups above work_centers)
+
+Create plant_hierarchy:
+
+id (uuid PK)
+
+parent_id (uuid FK to plant_hierarchy.id)
+
+level_type text constrained to site|plant|area|line
+
+code text, name text, is_active bool, timestamps
+
+Add nullable FK to work_centers:
+
+line_id uuid NULL references plant_hierarchy(id)
+(No renames.)
+
+2.2 Equipment Assets
+
+Create equipment_assets:
+
+id uuid PK
+
+work_center_id uuid FK
+
+asset_code text, name text, is_active bool
+
+metadata jsonb NULL
+
+timestamps
+
+2.3 Shift Calendars + Planned Time (required for OEE Availability)
+
+Create:
+
+shift_calendars (site/plant/line scoped)
+
+id, scope fields (site_id/plant_id/line_id nullable as applicable), name, timezone, is_active
+
+shift_calendar_rules
+
+calendar_id, day-of-week, start_time, end_time
+
+planned_downtime_windows
+
+calendar_id, start_ts, end_ts, reason_code_id NULL, description
+
+If a calendar is not configured, OEE must clearly show “Planned Time Unknown” and avoid silently computing wrong Availability.
+
+2.4 Equipment State Events + Downtime Events (primitives + idempotency)
+
+Create equipment_state_events:
+
+id uuid PK
+
+equipment_asset_id uuid FK
+
+state text (RUN/STOP/IDLE/CHANGEOVER/PLANNED_STOP)
+
+start_ts, end_ts NULL
+
+duration_seconds (computed or stored)
+
+external_event_id text NULL
+
+source text (manual|integration)
+
+created_by, timestamps
+
+Idempotency:
+
+Unique partial index on external_event_id where not null.
+
+Ingest uses insert-on-conflict-do-nothing (or upsert) to prevent duplicates.
+
+Create downtime_reason_codes:
+
+id uuid PK
+
+code text UNIQUE, name text
+
+category text (planned|unplanned)
+
+group text (mechanical/electrical/material/quality/ops/other)
+
+is_active bool, timestamps
+
+Create downtime_events:
+
+id uuid PK
+
+equipment_state_event_id uuid FK
+
+reason_code_id uuid NULL
+
+notes text NULL
+
+classified_by uuid NULL, timestamps
+
+2.5 Execution Runs (single system-of-record for execution)
+
+Create production_operation_runs:
+
+id uuid PK
+
+production_order_id uuid FK
+
+production_step_id uuid FK
+
+work_center_id uuid FK
+
+equipment_asset_id uuid NULL FK
+
+status text (NOT_STARTED|RUNNING|PAUSED|COMPLETED)
+
+start_ts, end_ts NULL
+
+timestamps
+
+Keep production_time_logs for labor tracking, but define runs as the system-of-record for operation execution state. If existing UI uses time logs for status, add compatibility view(s) rather than changing legacy behavior.
+
+2.6 Counts (good/scrap/rework) with auditability
+
+Create production_counts:
+
+id uuid PK
+
+operation_run_id uuid FK
+
+total_qty int/decimal
+
+good_qty int/decimal
+
+scrap_qty int/decimal
+
+rework_qty int/decimal
+
+entered_by, timestamps
+
+2.7 Material Consumption Log (must reconcile to inventory)
+
+Create material_consumption_log:
+
+id uuid PK
+
+production_order_id uuid FK
+
+operation_run_id uuid NULL FK
+
+item_id/part_id uuid (align to existing parts schema)
+
+qty, uom
+
+lot_id NULL, serial_id NULL (align to existing serialization)
+
+method text (scan|manual|backflush)
+
+created_by, timestamps
+
+Hard rule: consumption edits must be reversal-based
+
+Do not overwrite posted quantities.
+
+If a user corrects consumption, write a reversing consumption record and corresponding reversing inventory transaction(s).
+
+2.8 OEE Snapshots (optional but recommended)
+
+Create oee_snapshots:
+
+grain: hourly/shift/daily
+
+store: planned_time_seconds, run_time_seconds, downtime_seconds, total_count, good_count
+
+store computed availability, performance, quality, oee
+
+include calendar_id and scope (asset/work_center/line)
+
+2.9 MES Audit Log
+
+Create mes_audit_log:
+
+id uuid PK
+
+entity_type text, entity_id uuid
+
+action text
+
+before_json jsonb, after_json jsonb
+
+actor_id uuid
+
+timestamps
+
+Log at minimum:
+
+count edits/reclassifications
+
+downtime reason classification changes
+
+run status transitions
+
+consumption reversals
+
+PHASE 3 — Service Layer (Idempotent, No Double Counting)
+3.1 ProductionSchedulingService (MES)
+
+Responsibilities:
+
+Maintain assignments of production_orders (or their runs) to work_centers/lines
+
+Persist:
+
+work_center_id, sequence, optional planned_start_ts, planned_end_ts
+
+Enforce:
+
+Only RELEASED work orders are schedulable
+
+No silent overwrites—conflicts create warnings
+
+3.2 DowntimeService
+
+Auto-create downtime events when STOP exceeds threshold (configurable; default 60 seconds) OR manual stop workflow.
+
+Allow “Unclassified” reason initially, but flag it in reporting until classified.
+
+Provide Pareto aggregations by reason/category/group.
+
+3.3 OEEService (compute from primitives, show denominators)
+
+Compute:
+
+Availability = (PlannedTime − Downtime) / PlannedTime
+
+Performance = (IdealCycleTime × TotalCount) / RunTime
+
+Quality = GoodCount / TotalCount
+
+OEE = A × P × Q
+
+Ideal cycle time source precedence:
+
+asset-specific override (most specific)
+
+work_center override
+
+product+operation default (least specific)
+
+Must expose denominators in APIs/UI:
+
+planned_time, run_time, downtime, total_count, good_count, ideal_cycle_time used
+
+3.4 Inventory integration (single source + idempotency)
+
+When writing inventory movements from MES:
+
+Use existing inventory transaction function/table/pathway.
+
+Every MES-origin transaction must have a deterministic reference:
+
+reference_type='MES_CONSUMPTION', reference_id=material_consumption_log.id
+
+Enforce uniqueness/dedupe so a given reference_id posts once.
+
+Reversals produce new inventory transactions with reference_type='MES_CONSUMPTION_REVERSAL' and link to original.
+
+No direct GL posting: rely on existing inventory→GL posting pipeline (idempotent).
+
+PHASE 4 — UI BUILD (Define Screens + Exact Operator Workflows)
+A) Work Orders UI (/production/work-orders)
+
+List
+
+Filters: status, line, work center, due date, priority
+
+Actions: Release, Hold, Open Traveler
+
+Detail tabs (implementation requirement)
+
+Traveler
+
+Shows ordered production_steps
+
+For each step:
+
+Start step → creates/sets production_operation_runs status RUNNING + start_ts
+
+Pause/Stop step → ends run or pauses (status)
+
+Complete step → status COMPLETED + end_ts
+
+Materials
+
+Planned BOM vs Consumed
+
+Consume material:
+
+Scan/Manual/Backflush selector
+
+Lot/Serial required if item is serialized/lot-controlled
+
+Posts material_consumption_log + inventory transaction (idempotent)
+
+Corrections create reversal entries (no overwrite)
+
+Counts
+
+Entry per operation run: total/good/scrap/rework
+
+Edit requires reason + writes audit log + (if needed) downstream adjustments
+
+Downtime
+
+Shows downtime events tied to assets/work centers during the run window
+
+Reason assignment UI (required fields, supports “unknown” but flags)
+
+History / Audit
+
+Read-only timeline: run transitions, consumption, count edits, downtime classification changes
+
+B) Production Scheduling UI (/production/production-scheduling)
+
+Phase 1 (safe baseline)
+
+View-only Gantt-lite grid:
+
+Rows: work centers (grouped by line)
+
+Columns: day/week buckets
+
+Cards: work orders with planned start/end and sequence
+
+Phase 2 (feature-flagged)
+
+Drag/drop from “Unscheduled Work Orders” pool into a work center row
+
+Reorder within a row to change sequence
+
+Conflict rules:
+
+Warn on overlaps; require user confirmation
+
+Never silently reassign another order
+
+C) OEE Dashboard (/production/oee)
+
+Summary tiles: Availability, Performance, Quality, OEE
+
+Always show denominators beneath each metric
+
+Drilldowns:
+
+downtime event list
+
+run timeline
+
+counts breakdown (scrap reasons if available)
+
+audit changes impacting metrics
+
+D) Downtime Log (/production/downtime)
+
+Event list + filters (asset, line, reason category)
+
+Reason classification workflow
+
+Pareto chart (by reason/group/category)
+
+E) Reason Codes (/production/reason-codes)
+
+CRUD taxonomy
+
+Disable (inactive) instead of delete
+
+Changes are audited
+
+RBAC (minimum)
+
+Operators: start/stop runs, enter counts, enter consumption (if allowed)
+
+Supervisors: edit/reclassify downtime reasons, approve count edits
+
+Admin: manage reason codes, calendars, ideal cycle time configs
+
+PHASE 5 — TESTING + REGRESSION (Hard Gate)
+MES scenario test (must pass)
+
+Create production order with 2 steps
+
+Release it
+
+Schedule it in Production Scheduling
+
+Start step 1, record a STOP event > threshold, assign downtime reason
+
+Enter counts (include scrap)
+
+Consume materials (include serialized/lot-controlled case)
+
+Correct a consumption entry (creates reversal)
+
+Complete steps, close order
+Verify:
+
+OEE math correct and denominators visible
+
+Downtime appears in log + Pareto
+
+Inventory ledger reflects consumption once, reversal works, no duplicates
+
+Re-ingesting same external_event_id creates no duplicate events
+
+Audit trail captures edits and classifications
+
+Non-regression checklist (must pass)
+
+Tickets CRUD + status updates
+
+FSM Dispatch/Tech Scheduling unaffected
+
+Projects + milestone billing/deposits/retainage unaffected
+
+Invoicing + customer revenue rollups reconcile
+
+Inventory (stock levels/transfers/receiving) + serialization parent-child intact
+
+Accounting/GL posting remains idempotent (no double-post)
+
+Imports/migrations still function; schema cache stable

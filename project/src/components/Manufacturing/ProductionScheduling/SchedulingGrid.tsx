@@ -59,7 +59,8 @@ export function SchedulingGrid({
     return schedules.filter(s => {
       if (s.work_center_id !== workCenterId) return false;
       if (!s.scheduled_start_ts) return false;
-      const schedDate = s.scheduled_start_ts.split('T')[0];
+      // Handle both ISO format (with T) and Postgres format (with space)
+      const schedDate = new Date(s.scheduled_start_ts).toISOString().split('T')[0];
       return schedDate === dateStr;
     });
   };
