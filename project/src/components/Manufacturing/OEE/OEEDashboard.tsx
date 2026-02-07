@@ -107,14 +107,14 @@ export function OEEDashboard() {
   };
 
   const metricsData: OEEMetricsData | null = metrics ? {
-    availability: metrics.availability,
-    performance: metrics.performance,
-    quality: metrics.quality,
-    oee: metrics.oee,
-    planned_time_minutes: metrics.planned_time_minutes,
-    run_time_minutes: metrics.run_time_minutes,
-    downtime_minutes: metrics.downtime_minutes,
-    ideal_cycle_time_seconds: metrics.ideal_cycle_time_seconds,
+    availability: metrics.availability_pct,
+    performance: metrics.performance_pct,
+    quality: metrics.quality_pct,
+    oee: metrics.oee_pct,
+    planned_time_minutes: metrics.planned_production_time_seconds / 60,
+    run_time_minutes: metrics.actual_run_time_seconds / 60,
+    downtime_minutes: metrics.downtime_seconds / 60,
+    ideal_cycle_time_seconds: metrics.ideal_cycle_time_seconds ?? 60,
     total_count: metrics.total_count,
     good_count: metrics.good_count,
     scrap_count: metrics.scrap_count,
@@ -287,19 +287,19 @@ export function OEEDashboard() {
                   <div className="flex items-end space-x-1 h-48">
                     {trend.map((point, index) => (
                       <div
-                        key={point.period}
+                        key={point.period_start}
                         className="flex-1 flex flex-col items-center justify-end"
                       >
                         <div
                           className={`w-full rounded-t transition-all ${
-                            point.oee >= 85
+                            point.oee_pct >= 85
                               ? 'bg-green-500'
-                              : point.oee >= 60
+                              : point.oee_pct >= 60
                                 ? 'bg-yellow-500'
                                 : 'bg-red-500'
                           }`}
-                          style={{ height: `${Math.max(point.oee * 1.8, 2)}px` }}
-                          title={`${point.oee.toFixed(1)}%`}
+                          style={{ height: `${Math.max(point.oee_pct * 1.8, 2)}px` }}
+                          title={`${point.oee_pct.toFixed(1)}%`}
                         />
                       </div>
                     ))}
@@ -307,12 +307,12 @@ export function OEEDashboard() {
                   {/* X-axis labels */}
                   <div className="flex space-x-1 text-xs text-gray-500 overflow-x-auto">
                     {trend.map((point) => (
-                      <div key={point.period} className="flex-1 text-center truncate">
+                      <div key={point.period_start} className="flex-1 text-center truncate">
                         {granularity === 'hourly'
-                          ? new Date(point.period).toLocaleTimeString('en-US', { hour: 'numeric' })
+                          ? new Date(point.period_start).toLocaleTimeString('en-US', { hour: 'numeric' })
                           : granularity === 'shift'
-                            ? point.period
-                            : new Date(point.period).toLocaleDateString('en-US', { weekday: 'short' })
+                            ? point.shift_name || point.period_start
+                            : new Date(point.period_start).toLocaleDateString('en-US', { weekday: 'short' })
                         }
                       </div>
                     ))}
@@ -356,52 +356,52 @@ export function OEEDashboard() {
                     </tr>
                   ) : (
                     trend.map((point, index) => (
-                      <tr key={point.period} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <tr key={point.period_start} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                           {granularity === 'hourly'
-                            ? new Date(point.period).toLocaleString('en-US', {
+                            ? new Date(point.period_start).toLocaleString('en-US', {
                                 weekday: 'short',
                                 hour: 'numeric',
                                 minute: '2-digit',
                               })
                             : granularity === 'shift'
-                              ? point.period
-                              : new Date(point.period).toLocaleDateString('en-US', {
+                              ? point.shift_name || point.period_start
+                              : new Date(point.period_start).toLocaleDateString('en-US', {
                                   weekday: 'short',
                                   month: 'short',
                                   day: 'numeric',
                                 })
                           }
                         </td>
-                        <td className={`px-4 py-3 text-sm text-right ${getOEEColor(point.availability)}`}>
+                        <td className={`px-4 py-3 text-sm text-right ${getOEEColor(point.availability_pct)}`}>
                           <div className="flex items-center justify-end space-x-1">
-                            {getTrendIcon(point.availability, trend[index - 1]?.availability)}
-                            <span>{point.availability.toFixed(1)}%</span>
+                            {getTrendIcon(point.availability_pct, trend[index - 1]?.availability_pct)}
+                            <span>{point.availability_pct.toFixed(1)}%</span>
                           </div>
                         </td>
-                        <td className={`px-4 py-3 text-sm text-right ${getOEEColor(point.performance)}`}>
+                        <td className={`px-4 py-3 text-sm text-right ${getOEEColor(point.performance_pct)}`}>
                           <div className="flex items-center justify-end space-x-1">
-                            {getTrendIcon(point.performance, trend[index - 1]?.performance)}
-                            <span>{point.performance.toFixed(1)}%</span>
+                            {getTrendIcon(point.performance_pct, trend[index - 1]?.performance_pct)}
+                            <span>{point.performance_pct.toFixed(1)}%</span>
                           </div>
                         </td>
-                        <td className={`px-4 py-3 text-sm text-right ${getOEEColor(point.quality)}`}>
+                        <td className={`px-4 py-3 text-sm text-right ${getOEEColor(point.quality_pct)}`}>
                           <div className="flex items-center justify-end space-x-1">
-                            {getTrendIcon(point.quality, trend[index - 1]?.quality)}
-                            <span>{point.quality.toFixed(1)}%</span>
+                            {getTrendIcon(point.quality_pct, trend[index - 1]?.quality_pct)}
+                            <span>{point.quality_pct.toFixed(1)}%</span>
                           </div>
                         </td>
-                        <td className={`px-4 py-3 text-sm text-right font-medium ${getOEEColor(point.oee)}`}>
+                        <td className={`px-4 py-3 text-sm text-right font-medium ${getOEEColor(point.oee_pct)}`}>
                           <div className="flex items-center justify-end space-x-1">
-                            {getTrendIcon(point.oee, trend[index - 1]?.oee)}
-                            <span>{point.oee.toFixed(1)}%</span>
+                            {getTrendIcon(point.oee_pct, trend[index - 1]?.oee_pct)}
+                            <span>{point.oee_pct.toFixed(1)}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-green-600">
                           {point.good_count.toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-red-600">
-                          {point.scrap_count.toLocaleString()}
+                          {(point.total_count - point.good_count).toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-gray-500">
                           {Math.round(point.downtime_minutes)}m
