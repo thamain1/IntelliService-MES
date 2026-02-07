@@ -269,7 +269,7 @@ export function HelpView() {
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Equipment Tracking</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Track all HVAC equipment including serial numbers, models, manufacturers, warranty status, and service history.
+              Track all equipment including serial numbers, models, manufacturers, warranty status, and service history.
             </p>
           </div>
           <div>

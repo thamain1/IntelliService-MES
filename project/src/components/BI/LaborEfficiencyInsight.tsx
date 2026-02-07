@@ -80,7 +80,7 @@ export function LaborEfficiencyInsight() {
 
         if (isBillable) {
           billableHours += hours;
-          // Estimate labor billed at $95/hr (typical HVAC rate)
+          // Estimate labor billed at $95/hr (typical service rate)
           laborBilled += hours * 95;
         } else {
           nonBillableHours += hours;

@@ -154,7 +154,7 @@ export function EquipmentView() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Equipment Tracking</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage HVAC equipment and warranty information
+            Manage equipment and warranty information
           </p>
         </div>
         <button className="btn btn-primary flex items-center space-x-2">

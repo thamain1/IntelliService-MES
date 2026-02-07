@@ -311,7 +311,7 @@ export function VendorsView() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input"
-                    placeholder="e.g., HVAC Supply Co."
+                    placeholder="e.g., Parts Supply Co."
                   />
                 </div>
 

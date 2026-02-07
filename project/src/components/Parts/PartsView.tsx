@@ -357,7 +357,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{itemLabelPlural} Inventory</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {isTool ? 'Track and manage tools and equipment' : 'Track and manage HVAC parts and supplies'}
+            {isTool ? 'Track and manage tools and equipment' : 'Track and manage parts and supplies'}
           </p>
         </div>
         {activeTab === 'inventory' && (

@@ -438,7 +438,7 @@ export function NewEstimateModal({
               required
               value={formData.job_title}
               onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-              placeholder="e.g., HVAC System Replacement"
+              placeholder="e.g., System Replacement"
               className="input"
             />
           </div>

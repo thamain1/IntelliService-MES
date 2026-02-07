@@ -571,7 +571,7 @@ export function ProjectsView() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input"
-                    placeholder="e.g., Complete HVAC System Installation"
+                    placeholder="e.g., Complete System Installation"
                   />
                 </div>
 

@@ -402,7 +402,7 @@ export class WarrantyService {
   }
 
   /**
-   * Common HVAC warranty providers
+   * Common equipment warranty providers
    */
   static getCommonProviders(): Array<{ name: string; phone?: string; website?: string }> {
     return [
