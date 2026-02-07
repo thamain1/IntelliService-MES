@@ -398,17 +398,22 @@ export class ProductionSchedulingService {
       }
 
       if (filters.from_date) {
-        const fromDate = new Date(filters.from_date).getTime();
-        results = results.filter(s =>
-          s.scheduled_start_ts && new Date(s.scheduled_start_ts).getTime() >= fromDate
-        );
+        // Compare dates only (ignore time/timezone) for scheduling purposes
+        const fromDateStr = new Date(filters.from_date).toISOString().split('T')[0];
+        results = results.filter(s => {
+          if (!s.scheduled_start_ts) return false;
+          const schedDateStr = new Date(s.scheduled_start_ts).toISOString().split('T')[0];
+          return schedDateStr >= fromDateStr;
+        });
       }
 
       if (filters.to_date) {
-        const toDate = new Date(filters.to_date).getTime();
-        results = results.filter(s =>
-          s.scheduled_start_ts && new Date(s.scheduled_start_ts).getTime() <= toDate
-        );
+        const toDateStr = new Date(filters.to_date).toISOString().split('T')[0];
+        results = results.filter(s => {
+          if (!s.scheduled_start_ts) return false;
+          const schedDateStr = new Date(s.scheduled_start_ts).toISOString().split('T')[0];
+          return schedDateStr <= toDateStr;
+        });
       }
 
       return results as WorkCenterSchedule[];
