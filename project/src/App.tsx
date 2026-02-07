@@ -48,6 +48,13 @@ const OEEDashboard = lazy(() => import('./components/Manufacturing/OEE/OEEDashbo
 const DowntimeLogView = lazy(() => import('./components/Manufacturing/Downtime/DowntimeLogView').then(m => ({ default: m.DowntimeLogView })));
 const ReasonCodesView = lazy(() => import('./components/Manufacturing/ReasonCodes/ReasonCodesView').then(m => ({ default: m.ReasonCodesView })));
 
+// Quality views
+const InspectionWorkbenchView = lazy(() => import('./components/Manufacturing/Quality/InspectionWorkbenchView').then(m => ({ default: m.InspectionWorkbenchView })));
+const NonconformanceView = lazy(() => import('./components/Manufacturing/Quality/NonconformanceView').then(m => ({ default: m.NonconformanceView })));
+const SPCDashboardView = lazy(() => import('./components/Manufacturing/Quality/SPCDashboardView').then(m => ({ default: m.SPCDashboardView })));
+const InspectionPlansView = lazy(() => import('./components/Manufacturing/Quality/InspectionPlansView').then(m => ({ default: m.InspectionPlansView })));
+const DefectCodesView = lazy(() => import('./components/Manufacturing/Quality/DefectCodesView').then(m => ({ default: m.DefectCodesView })));
+
 // Loading spinner for Suspense fallback
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center h-64">
@@ -260,6 +267,17 @@ function AppContent() {
         return <MaterialHandlerView />;
       case 'production-reason-codes':
         return <ReasonCodesView />;
+      // Quality views
+      case 'quality-inspection-workbench':
+        return <InspectionWorkbenchView />;
+      case 'quality-nonconformances':
+        return <NonconformanceView />;
+      case 'quality-spc':
+        return <SPCDashboardView />;
+      case 'quality-inspection-plans':
+        return <InspectionPlansView />;
+      case 'quality-defect-codes':
+        return <DefectCodesView />;
       default:
         return <DashboardView />;
     }

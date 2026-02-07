@@ -44,6 +44,8 @@ import {
   Truck,
   Tag,
   Gauge,
+  ClipboardCheck,
+  XCircle,
 } from 'lucide-react';
 
 export interface NavigationItem {
@@ -284,6 +286,44 @@ export const navigationConfig: NavigationGroup[] = [
         id: 'production-reason-codes',
         label: 'Reason Codes',
         icon: Tag,
+        roles: ['admin'],
+      },
+    ],
+  },
+  {
+    id: 'quality',
+    label: 'Quality',
+    icon: ClipboardCheck,
+    roles: ['admin', 'dispatcher', 'operator', 'supervisor', 'quality_inspector'],
+    children: [
+      {
+        id: 'quality-inspection-workbench',
+        label: 'Inspection Workbench',
+        icon: ClipboardCheck,
+        roles: ['admin', 'dispatcher', 'operator', 'supervisor', 'quality_inspector'],
+      },
+      {
+        id: 'quality-nonconformances',
+        label: 'Nonconformances',
+        icon: XCircle,
+        roles: ['admin', 'dispatcher', 'supervisor', 'quality_inspector'],
+      },
+      {
+        id: 'quality-spc',
+        label: 'SPC Dashboard',
+        icon: LineChart,
+        roles: ['admin', 'dispatcher', 'supervisor', 'quality_inspector'],
+      },
+      {
+        id: 'quality-inspection-plans',
+        label: 'Inspection Plans',
+        icon: ClipboardList,
+        roles: ['admin'],
+      },
+      {
+        id: 'quality-defect-codes',
+        label: 'Defect Codes',
+        icon: AlertTriangle,
         roles: ['admin'],
       },
     ],

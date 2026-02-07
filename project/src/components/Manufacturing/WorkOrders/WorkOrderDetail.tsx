@@ -11,11 +11,13 @@ import {
   ListChecks,
   History,
   BarChart3,
+  ClipboardCheck,
 } from 'lucide-react';
 import { ManufacturingService, ProductionOrder, ProductionStep, BOMItem } from '../../../services/ManufacturingService';
 import { WorkOrderTraveler } from './WorkOrderTraveler';
 import { WorkOrderMaterials } from './WorkOrderMaterials';
 import { WorkOrderCounts } from './WorkOrderCounts';
+import { WorkOrderQuality } from './WorkOrderQuality';
 import { useAuth } from '../../../contexts/AuthContext';
 
 interface WorkOrderDetailProps {
@@ -23,7 +25,7 @@ interface WorkOrderDetailProps {
   onBack: () => void;
 }
 
-type TabId = 'traveler' | 'materials' | 'counts' | 'downtime' | 'history';
+type TabId = 'traveler' | 'materials' | 'counts' | 'quality' | 'downtime' | 'history';
 
 export function WorkOrderDetail({ orderId, onBack }: WorkOrderDetailProps) {
   const { profile } = useAuth();
@@ -121,6 +123,7 @@ export function WorkOrderDetail({ orderId, onBack }: WorkOrderDetailProps) {
     { id: 'traveler', label: 'Traveler', icon: <ListChecks className="w-4 h-4" /> },
     { id: 'materials', label: 'Materials', icon: <Package className="w-4 h-4" /> },
     { id: 'counts', label: 'Counts', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'quality', label: 'Quality', icon: <ClipboardCheck className="w-4 h-4" /> },
     { id: 'downtime', label: 'Downtime', icon: <AlertTriangle className="w-4 h-4" /> },
     { id: 'history', label: 'History', icon: <History className="w-4 h-4" /> },
   ];
@@ -319,6 +322,12 @@ export function WorkOrderDetail({ orderId, onBack }: WorkOrderDetailProps) {
             orderId={order.id}
             orderStatus={order.status}
             onUpdate={loadOrder}
+          />
+        )}
+        {activeTab === 'quality' && (
+          <WorkOrderQuality
+            productionOrderId={order.id}
+            workCenterId={order.work_center_id || undefined}
           />
         )}
         {activeTab === 'downtime' && (
