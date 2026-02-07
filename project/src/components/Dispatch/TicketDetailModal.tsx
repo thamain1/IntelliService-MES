@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, User, Calendar, MapPin, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle } from 'lucide-react';
+import { X, Clock, User, Calendar, MapPin, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle, Factory } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CodeSelector } from '../CRM/CodeSelector';
+import { useFeature } from '../../hooks/useFeature';
+import { SendToShopModal } from '../Manufacturing/SendToShopModal';
 import type { Database } from '../../lib/database.types';
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
@@ -52,6 +54,10 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
   // Hold-related state
   const [showNeedPartsModal, setShowNeedPartsModal] = useState(false);
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+  const [showSendToShopModal, setShowSendToShopModal] = useState(false);
+
+  // Feature flags
+  const { enabled: mesEnabled } = useFeature('module_mes');
   const [parts, setParts] = useState<Part[]>([]);
   const [partsRequest, setPartsRequest] = useState({
     urgency: 'medium' as 'low' | 'medium' | 'high' | 'critical',
@@ -841,6 +847,16 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                       <AlertCircle className="w-4 h-4 mr-1" />
                       Report Issue
                     </button>
+                    {mesEnabled && ticket?.status !== 'completed' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSendToShopModal(true)}
+                        className="px-3 py-2 text-sm bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 rounded-lg transition-colors flex items-center"
+                      >
+                        <Factory className="w-4 h-4 mr-1" />
+                        Send to Shop
+                      </button>
+                    )}
                   </>
                 ) : (
                   <button
@@ -1143,6 +1159,21 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
             </div>
           </div>
         </div>
+      )}
+
+      {/* Send to Shop Modal */}
+      {showSendToShopModal && ticket && (
+        <SendToShopModal
+          ticketId={ticket.id}
+          ticketNumber={ticket.ticket_number}
+          ticketTitle={ticket.title}
+          onClose={() => setShowSendToShopModal(false)}
+          onSuccess={(orderId) => {
+            setShowSendToShopModal(false);
+            alert(`Production order created successfully!`);
+            onUpdate();
+          }}
+        />
       )}
     </div>
   );

@@ -39,6 +39,9 @@ import {
   Kanban,
   Activity,
   BarChart3,
+  Factory,
+  Layers,
+  Truck,
 } from 'lucide-react';
 
 export interface NavigationItem {
@@ -224,6 +227,32 @@ export const navigationConfig: NavigationGroup[] = [
         label: 'Project Overview',
         icon: FolderKanban,
         roles: ['admin', 'dispatcher'],
+      },
+    ],
+  },
+  {
+    id: 'production',
+    label: 'Production',
+    icon: Factory,
+    roles: ['admin', 'dispatcher', 'material_handler'],
+    children: [
+      {
+        id: 'production-dashboard',
+        label: 'Production Dashboard',
+        icon: Factory,
+        roles: ['admin', 'dispatcher'],
+      },
+      {
+        id: 'production-work-centers',
+        label: 'Work Centers',
+        icon: Layers,
+        roles: ['admin', 'dispatcher'],
+      },
+      {
+        id: 'production-material-moves',
+        label: 'Material Moves',
+        icon: Truck,
+        roles: ['admin', 'dispatcher', 'material_handler'],
       },
     ],
   },

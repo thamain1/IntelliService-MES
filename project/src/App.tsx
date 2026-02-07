@@ -39,6 +39,8 @@ const DSOInsight = lazy(() => import('./components/BI/DSOInsight').then(m => ({ 
 const LaborEfficiencyInsight = lazy(() => import('./components/BI/LaborEfficiencyInsight').then(m => ({ default: m.LaborEfficiencyInsight })));
 const HelpView = lazy(() => import('./components/Help/HelpView').then(m => ({ default: m.HelpView })));
 const CRMView = lazy(() => import('./components/CRM/CRMView').then(m => ({ default: m.CRMView })));
+const ProductionDashboard = lazy(() => import('./components/Manufacturing/ProductionDashboard').then(m => ({ default: m.ProductionDashboard })));
+const MaterialHandlerView = lazy(() => import('./components/Manufacturing/MaterialHandlerView').then(m => ({ default: m.MaterialHandlerView })));
 
 // Loading spinner for Suspense fallback
 const LoadingSpinner = () => (
@@ -233,6 +235,13 @@ function AppContent() {
         return <CRMView initialTab="analytics" analyticsView="equipment" />;
       case 'crm-analytics-tech-quality':
         return <CRMView initialTab="analytics" analyticsView="techs" />;
+      case 'production':
+      case 'production-dashboard':
+        return <ProductionDashboard />;
+      case 'production-work-centers':
+        return <ProductionDashboard initialView="work-centers" />;
+      case 'production-material-moves':
+        return <MaterialHandlerView />;
       default:
         return <DashboardView />;
     }
