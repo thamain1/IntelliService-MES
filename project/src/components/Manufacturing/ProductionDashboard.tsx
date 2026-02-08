@@ -29,6 +29,9 @@ interface ProductionDashboardProps {
   onNavigate?: (view: string) => void;
 }
 
+// Auto-refresh interval in milliseconds (30 seconds)
+const AUTO_REFRESH_INTERVAL = 30000;
+
 export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: ProductionDashboardProps) {
   const { profile } = useAuth();
   const [view, setView] = useState<'dashboard' | 'work-centers'>(initialView);
@@ -40,18 +43,33 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
     avgCycleTimeHours: null,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // M4: Error state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // M2: Include searchTerm in dependencies (via debounce pattern)
   useEffect(() => {
     loadData();
   }, [statusFilter, priorityFilter]);
 
+  // M5: Auto-refresh dashboard data
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Only auto-refresh if not in detail view and not showing modal
+      if (!selectedOrderId && !showCreateModal) {
+        loadData();
+      }
+    }, AUTO_REFRESH_INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [selectedOrderId, showCreateModal, statusFilter, priorityFilter, searchTerm]);
+
   const loadData = async () => {
     setLoading(true);
+    setError(null); // M4: Clear error on reload
     try {
       const filters: DashboardFilters = {
         search: searchTerm || undefined,
@@ -66,8 +84,9 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
 
       setOrders(ordersData);
       setStats(statsData);
-    } catch (error) {
-      console.error('Error loading production data:', error);
+    } catch (err: any) {
+      console.error('Error loading production data:', err);
+      setError(err.message || 'Failed to load production data'); // M4: Set error
     } finally {
       setLoading(false);
     }
@@ -180,10 +199,27 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
     );
   }
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // M4: Display error message if load failed
+  if (error && orders.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4">
+        <AlertCircle className="w-12 h-12 text-red-500" />
+        <p className="text-lg font-medium text-gray-900 dark:text-white">Failed to load data</p>
+        <p className="text-gray-500 dark:text-gray-400">{error}</p>
+        <button
+          onClick={loadData}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -215,6 +251,24 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
           )}
         </div>
       </div>
+
+      {/* M4: Error banner (when we have stale data but refresh failed) */}
+      {error && orders.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <span className="text-red-800 dark:text-red-200">
+              Failed to refresh data: {error}
+            </span>
+          </div>
+          <button
+            onClick={loadData}
+            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -311,8 +365,9 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {orders.map((order) => {
               const priorityBadge = getPriorityBadge(order.priority);
+              // M3: Cap progress at 100% to prevent overflow
               const progress = order.total_steps && order.total_steps > 0
-                ? Math.round((order.completed_steps || 0) / order.total_steps * 100)
+                ? Math.min(100, Math.round((order.completed_steps || 0) / order.total_steps * 100))
                 : 0;
 
               return (

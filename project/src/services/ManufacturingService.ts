@@ -6,6 +6,7 @@
 
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
+import { MESInventoryService } from './MESInventoryService';
 
 // ========== Type Definitions ==========
 
@@ -454,9 +455,55 @@ export class ManufacturingService {
 
   /**
    * Complete a production order
+   *
+   * This method:
+   * 1. Consumes all BOM materials (with idempotency protection)
+   * 2. Updates the order status to complete
+   * 3. Sets the actual_end timestamp
    */
-  static async completeOrder(id: string, quantity?: number): Promise<{ success: boolean; error?: string }> {
+  static async completeOrder(id: string, quantity?: number): Promise<{
+    success: boolean;
+    error?: string;
+    consumptionResult?: {
+      consumed_items: { part_name: string; qty_consumed: number }[];
+      errors: { part_name: string; error: string }[];
+    };
+  }> {
     try {
+      // First, consume all BOM materials
+      // This is idempotent - if already consumed, will return existing logs
+      const consumptionResult = await MESInventoryService.consumeBOMForOrder(id);
+
+      // If there are consumption errors, we can still complete the order
+      // but we'll report the errors back
+      if (!consumptionResult.success && consumptionResult.errors.length > 0) {
+        // Check if ALL items failed - if so, don't complete the order
+        const allFailed = consumptionResult.consumed_items.length === 0 &&
+                         consumptionResult.errors.length > 0;
+
+        if (allFailed) {
+          console.error('All BOM consumption failed:', consumptionResult.errors);
+          return {
+            success: false,
+            error: `Failed to consume materials: ${consumptionResult.errors.map(e => `${e.part_name}: ${e.error}`).join('; ')}`,
+            consumptionResult: {
+              consumed_items: consumptionResult.consumed_items.map(i => ({
+                part_name: i.part_name,
+                qty_consumed: i.qty_consumed
+              })),
+              errors: consumptionResult.errors.map(e => ({
+                part_name: e.part_name,
+                error: e.error
+              })),
+            },
+          };
+        }
+
+        // Partial consumption - log warning but continue
+        console.warn('Partial BOM consumption:', consumptionResult.errors);
+      }
+
+      // Update the order status
       const updates: Partial<ProductionOrderRow> = {
         status: 'complete',
         actual_end: new Date().toISOString(),
@@ -466,7 +513,25 @@ export class ManufacturingService {
         updates.quantity_completed = quantity;
       }
 
-      return this.updateOrder(id, updates);
+      const updateResult = await this.updateOrder(id, updates);
+
+      if (!updateResult.success) {
+        return updateResult;
+      }
+
+      return {
+        success: true,
+        consumptionResult: {
+          consumed_items: consumptionResult.consumed_items.map(i => ({
+            part_name: i.part_name,
+            qty_consumed: i.qty_consumed
+          })),
+          errors: consumptionResult.errors.map(e => ({
+            part_name: e.part_name,
+            error: e.error
+          })),
+        },
+      };
     } catch (error: any) {
       console.error('Error completing order:', error);
       return { success: false, error: error.message || 'Failed to complete order' };

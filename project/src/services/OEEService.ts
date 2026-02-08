@@ -143,12 +143,12 @@ export class OEEService {
       // Get downtime
       const downtime = await this.getDowntimeForPeriod(workCenterId, fromDate, toDate);
 
-      // Get production counts
+      // Get production counts (with null coalescing for safety)
       const counts = await this.getProductionCounts(workCenterId, fromDate, toDate);
-      const totalCount = counts.reduce((sum, c) => sum + c.total_qty, 0);
-      const goodCount = counts.reduce((sum, c) => sum + c.good_qty, 0);
-      const scrapCount = counts.reduce((sum, c) => sum + c.scrap_qty, 0);
-      const reworkCount = counts.reduce((sum, c) => sum + c.rework_qty, 0);
+      const totalCount = counts.reduce((sum, c) => sum + (c.total_qty ?? 0), 0);
+      const goodCount = counts.reduce((sum, c) => sum + (c.good_qty ?? 0), 0);
+      const scrapCount = counts.reduce((sum, c) => sum + (c.scrap_qty ?? 0), 0);
+      const reworkCount = counts.reduce((sum, c) => sum + (c.rework_qty ?? 0), 0);
 
       // Get ideal cycle time
       const cycleTimeInfo = await this.getIdealCycleTime(workCenterId);
@@ -244,6 +244,8 @@ export class OEEService {
 
   /**
    * Get OEE trend data
+   *
+   * Optimized to batch-fetch data and calculate locally to avoid N+1 queries.
    */
   static async getOEETrend(
     workCenterId: string,
@@ -281,7 +283,31 @@ export class OEEService {
       }
 
       // Otherwise calculate on the fly (for daily granularity)
+      // OPTIMIZED: Batch-fetch all data first, then process locally
       if (granularity === 'daily') {
+        // Batch fetch all counts for the entire date range
+        const [allCounts, allDowntime, cycleTimeInfo] = await Promise.all([
+          supabase
+            .from('production_counts')
+            .select('count_timestamp, total_qty, good_qty, scrap_qty, rework_qty')
+            .eq('work_center_id', workCenterId)
+            .gte('count_timestamp', fromDate)
+            .lte('count_timestamp', toDate)
+            .order('count_timestamp', { ascending: true }),
+          supabase
+            .from('vw_downtime_log')
+            .select('start_ts, duration_seconds, is_planned')
+            .eq('work_center_id', workCenterId)
+            .gte('start_ts', fromDate)
+            .lte('start_ts', toDate),
+          this.getIdealCycleTime(workCenterId),
+        ]);
+
+        const counts = allCounts.data || [];
+        const downtimeEvents = allDowntime.data || [];
+        const idealCycleTime = cycleTimeInfo.cycle_time_seconds;
+
+        // Group data by day
         const from = new Date(fromDate);
         const to = new Date(toDate);
         const current = new Date(from);
@@ -292,22 +318,54 @@ export class OEEService {
           const dayEnd = new Date(current);
           dayEnd.setHours(23, 59, 59, 999);
 
-          const oee = await this.calculateOEE(
-            workCenterId,
-            dayStart.toISOString(),
-            dayEnd.toISOString()
-          );
+          const dayStartMs = dayStart.getTime();
+          const dayEndMs = dayEnd.getTime();
+
+          // Filter counts for this day
+          const dayCounts = counts.filter(c => {
+            const ts = new Date(c.count_timestamp).getTime();
+            return ts >= dayStartMs && ts <= dayEndMs;
+          });
+
+          // Filter downtime for this day
+          const dayDowntime = downtimeEvents.filter(d => {
+            const ts = new Date(d.start_ts).getTime();
+            return ts >= dayStartMs && ts <= dayEndMs;
+          });
+
+          // Calculate metrics for this day
+          const totalCount = dayCounts.reduce((sum, c) => sum + (c.total_qty ?? 0), 0);
+          const goodCount = dayCounts.reduce((sum, c) => sum + (c.good_qty ?? 0), 0);
+          const totalDowntime = dayDowntime.reduce((sum, d) => sum + (d.duration_seconds ?? 0), 0);
+
+          // Calculate OEE components
+          const plannedTime = this.DEFAULT_SHIFT_HOURS * 60 * 60; // 8 hours in seconds
+          const actualRunTime = Math.max(0, plannedTime - totalDowntime);
+
+          const availability = plannedTime > 0
+            ? (plannedTime - totalDowntime) / plannedTime
+            : 0;
+
+          const performance = actualRunTime > 0 && idealCycleTime
+            ? (idealCycleTime * totalCount) / actualRunTime
+            : 0;
+
+          const quality = totalCount > 0
+            ? goodCount / totalCount
+            : 0;
+
+          const oee = availability * performance * quality;
 
           trends.push({
             period_start: dayStart.toISOString(),
             period_end: dayEnd.toISOString(),
-            availability_pct: oee.availability_pct,
-            performance_pct: oee.performance_pct,
-            quality_pct: oee.quality_pct,
-            oee_pct: oee.oee_pct,
-            total_count: oee.total_count,
-            good_count: oee.good_count,
-            downtime_minutes: Math.round(oee.downtime_seconds / 60),
+            availability_pct: Math.round(Math.min(100, Math.max(0, availability * 100)) * 100) / 100,
+            performance_pct: Math.round(Math.min(100, Math.max(0, performance * 100)) * 100) / 100,
+            quality_pct: Math.round(Math.min(100, Math.max(0, quality * 100)) * 100) / 100,
+            oee_pct: Math.round(Math.min(100, Math.max(0, oee * 100)) * 100) / 100,
+            total_count: totalCount,
+            good_count: goodCount,
+            downtime_minutes: Math.round(totalDowntime / 60),
           });
 
           current.setDate(current.getDate() + 1);
@@ -626,19 +684,53 @@ export class OEEService {
     fromDate: string,
     toDate: string
   ): Promise<number> {
-    // Calculate based on shift calendar or default
-    // For now, use a simple calculation based on business hours
     const from = new Date(fromDate);
     const to = new Date(toDate);
     const diffMs = to.getTime() - from.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-    // Assume 8 hours per day, 5 days a week
-    // This is a simplification - in production, use shift calendars
-    const hoursPerDay = this.DEFAULT_SHIFT_HOURS;
-    const totalHours = Math.ceil(diffDays) * hoursPerDay;
+    // For same-day calculations (shift-level), use actual hours
+    const diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours <= 24) {
+      // Same day or shift - return actual hours (capped at shift hours)
+      const actualHours = Math.min(diffHours, this.DEFAULT_SHIFT_HOURS);
+      return actualHours * 60 * 60; // Return in seconds
+    }
 
-    return totalHours * 60 * 60; // Return in seconds
+    // For multi-day calculations, try to get work center specific hours
+    try {
+      const { data: workCenter } = await supabase
+        .from('work_centers')
+        .select('hours_per_day, days_per_week')
+        .eq('id', workCenterId)
+        .single();
+
+      const hoursPerDay = workCenter?.hours_per_day || this.DEFAULT_SHIFT_HOURS;
+      const daysPerWeek = workCenter?.days_per_week || 5;
+
+      // Calculate working days (excluding weekends if 5-day week)
+      let workingDays = 0;
+      const current = new Date(from);
+
+      while (current <= to) {
+        const dayOfWeek = current.getDay();
+        // If 7-day operation, count all days; otherwise skip weekends
+        if (daysPerWeek === 7 || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
+          workingDays++;
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      // Ensure at least 1 working day
+      workingDays = Math.max(1, workingDays);
+      const totalHours = workingDays * hoursPerDay;
+
+      return totalHours * 60 * 60; // Return in seconds
+    } catch (error) {
+      // Fallback to simple calculation
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const totalHours = diffDays * this.DEFAULT_SHIFT_HOURS;
+      return totalHours * 60 * 60;
+    }
   }
 
   private static async getDowntimeForPeriod(

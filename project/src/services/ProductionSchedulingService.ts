@@ -82,6 +82,9 @@ export interface ScheduleFilters {
 export class ProductionSchedulingService {
   // ========== Scheduling Operations ==========
 
+  // Default schedule duration in milliseconds (1 hour)
+  private static readonly DEFAULT_SCHEDULE_DURATION_MS = 60 * 60 * 1000;
+
   /**
    * Schedule a production order/step to a work center
    */
@@ -92,8 +95,16 @@ export class ProductionSchedulingService {
     error?: string;
   }> {
     try {
+      // Compute end time if not provided (used for both validation and storage)
+      const scheduledEndTs = input.scheduled_end_ts || new Date(
+        new Date(input.scheduled_start_ts).getTime() + this.DEFAULT_SCHEDULE_DURATION_MS
+      ).toISOString();
+
+      // Create input with computed end time
+      const inputWithEndTime = { ...input, scheduled_end_ts: scheduledEndTs };
+
       // Validate schedule first
-      const validation = await this.validateSchedule(input);
+      const validation = await this.validateSchedule(inputWithEndTime);
       if (!validation.valid && validation.conflicts.length > 0) {
         return { success: false, conflicts: validation.conflicts };
       }
@@ -121,7 +132,7 @@ export class ProductionSchedulingService {
           work_center_id: input.work_center_id,
           equipment_asset_id: input.equipment_asset_id,
           scheduled_start_ts: input.scheduled_start_ts,
-          scheduled_end_ts: input.scheduled_end_ts,
+          scheduled_end_ts: scheduledEndTs, // Use the computed end time
           sequence_number: sequenceNumber,
           status: 'NOT_STARTED',
           started_by: user?.user?.id,
@@ -494,8 +505,15 @@ export class ProductionSchedulingService {
         // For each day in range
         const current = new Date(from);
         while (current <= to) {
-          const dayStart = new Date(current).setHours(0, 0, 0, 0);
-          const dayEnd = new Date(current).setHours(23, 59, 59, 999);
+          // FIX: Create new Date objects and modify them properly
+          // setHours() returns a timestamp, not a Date, so we need to use it differently
+          const dayStartDate = new Date(current);
+          dayStartDate.setHours(0, 0, 0, 0);
+          const dayStart = dayStartDate.getTime();
+
+          const dayEndDate = new Date(current);
+          dayEndDate.setHours(23, 59, 59, 999);
+          const dayEnd = dayEndDate.getTime();
 
           let scheduledMinutes = 0;
 

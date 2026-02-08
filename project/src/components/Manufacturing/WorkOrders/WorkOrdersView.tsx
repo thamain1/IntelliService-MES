@@ -269,7 +269,7 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
                             <div
                               className="bg-blue-600 h-2 rounded-full"
                               style={{
-                                width: `${((order.completed_steps || 0) / order.total_steps) * 100}%`,
+                                width: `${Math.min(100, ((order.completed_steps || 0) / order.total_steps) * 100)}%`,
                               }}
                             />
                           </div>

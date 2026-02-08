@@ -115,6 +115,9 @@ export class DowntimeService {
 
   /**
    * Start a downtime event
+   *
+   * Includes duplicate check - will not create a new event if equipment
+   * already has an active (ongoing) downtime.
    */
   static async startDowntime(input: StartDowntimeInput): Promise<{
     success: boolean;
@@ -123,6 +126,30 @@ export class DowntimeService {
   }> {
     try {
       const { data: user } = await supabase.auth.getUser();
+
+      // Check for existing active downtime on this equipment
+      const { data: activeEvent } = await supabase
+        .from('equipment_state_events')
+        .select('id')
+        .eq('equipment_asset_id', input.equipment_asset_id)
+        .in('state', ['STOP', 'IDLE', 'CHANGEOVER', 'PLANNED_STOP'])
+        .is('end_ts', null)
+        .maybeSingle();
+
+      if (activeEvent) {
+        // Return the existing active event instead of creating duplicate
+        const { data: existingDowntime } = await supabase
+          .from('vw_downtime_log')
+          .select('*')
+          .eq('equipment_state_event_id', activeEvent.id)
+          .single();
+
+        return {
+          success: false,
+          error: 'Equipment already has an active downtime event. End the current event before starting a new one.',
+          event: existingDowntime as DowntimeEvent,
+        };
+      }
 
       // Get work center from equipment asset
       const { data: asset } = await supabase
