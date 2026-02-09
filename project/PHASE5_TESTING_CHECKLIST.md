@@ -9,8 +9,9 @@
 
 | Environment | URL | Purpose |
 |-------------|-----|---------|
-| MES Dev | `vijbnqrewokckwmtbbhi.supabase.co` | Primary test environment |
-| Demo | `uuarbdrzfakvlhlrnwgc.supabase.co` | Secondary verification |
+| MES Dev | `vijbnqrewokckwmtbbhi.supabase.co` | MES test environment |
+
+> **Note:** MES is a standalone module. Do NOT test against the IntelliServiceBeta/Demo environment.
 
 ---
 
