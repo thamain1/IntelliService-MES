@@ -101,7 +101,7 @@ export function MasterProjectView({ projectId, onClose }: MasterProjectViewProps
   };
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { className: string; icon: any }> = {
+    const badges: Record<string, { className: string; icon: React.ElementType }> = {
       completed: { className: 'badge badge-green', icon: CheckCircle },
       in_progress: { className: 'badge badge-blue', icon: Clock },
       planning: { className: 'badge badge-yellow', icon: AlertCircle },

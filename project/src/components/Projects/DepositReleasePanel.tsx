@@ -27,7 +27,7 @@ interface DepositRelease {
 }
 
 export function DepositReleasePanel({ projectId }: DepositReleasePanelProps) {
-  const { profile } = useAuth();
+  const { profile: _profile } = useAuth();
   const [summary, setSummary] = useState<DepositSummary | null>(null);
   const [releases, setReleases] = useState<DepositRelease[]>([]);
   const [loading, setLoading] = useState(true);
@@ -297,9 +297,10 @@ function ReleaseDepositModal({
 
       alert(`Deposit of ${formatCurrency(amount)} released successfully!`);
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error releasing deposit:', error);
-      alert(`Failed to release deposit: ${error.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to release deposit: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

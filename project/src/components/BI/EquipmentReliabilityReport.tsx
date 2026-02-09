@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Wrench, Clock, AlertTriangle, TrendingUp, Award } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ZAxis, Legend } from 'recharts';
+import { Wrench, Clock, AlertTriangle, Award } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';

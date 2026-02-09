@@ -256,9 +256,10 @@ export function RecordPaymentModal({
 
       onPaymentRecorded();
       onClose();
-    } catch (err: any) {
-      console.error('Failed to record payment:', err);
-      setError(err.message || 'Failed to record payment');
+    } catch (error: unknown) {
+      console.error('Failed to record payment:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setError(message || 'Failed to record payment');
     } finally {
       setLoading(false);
     }

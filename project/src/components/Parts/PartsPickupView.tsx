@@ -90,9 +90,10 @@ export function PartsPickupView() {
 
       alert(`Successfully picked up ${data.items_transferred} item(s). Parts have been added to your truck inventory.`);
       loadPickLists();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error picking up parts:', error);
-      alert(`Failed to pick up parts: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to pick up parts: ${message}`);
     } finally {
       setPickingUp(null);
     }

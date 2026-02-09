@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-  BarChart3,
   PieChart,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
   Wrench,
   Users,
   RefreshCw,
-  ChevronRight,
   Activity,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -90,7 +85,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
     setLoading(true);
     try {
       switch (activeView) {
-        case 'pareto':
+        case 'pareto': {
           const { data: pareto } = await supabase
             .from('vw_problem_pareto')
             .select('*')
@@ -98,7 +93,8 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .limit(20);
           setParetoData(pareto || []);
           break;
-        case 'callbacks':
+        }
+        case 'callbacks': {
           const { data: rework } = await supabase
             .from('vw_rework_analysis')
             .select('*')
@@ -106,7 +102,8 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .limit(50);
           setReworkData(rework || []);
           break;
-        case 'equipment':
+        }
+        case 'equipment': {
           const { data: equipment } = await supabase
             .from('vw_equipment_reliability')
             .select('*')
@@ -114,13 +111,15 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .limit(50);
           setEquipmentData(equipment || []);
           break;
-        case 'techs':
+        }
+        case 'techs': {
           const { data: techs } = await supabase
             .from('vw_technician_quality')
             .select('*')
             .order('callback_rate', { ascending: false });
           setTechData(techs || []);
           break;
+        }
       }
     } catch (err) {
       console.error('Failed to load analytics:', err);
@@ -170,7 +169,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {paretoData.map((item, index) => (
+              {paretoData.map((item, _index) => (
                 <tr key={item.code} className={item.cumulative_percentage <= 80 ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
                   <td className="px-4 py-3">
                     <div>
@@ -292,7 +291,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {equipmentData.map((item, index) => (
+              {equipmentData.map((item, _index) => (
                 <tr key={`${item.manufacturer}-${item.model_number}`}>
                   <td className="px-4 py-3">
                     <div>

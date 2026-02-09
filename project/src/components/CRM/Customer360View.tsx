@@ -5,19 +5,16 @@ import {
   Mail,
   MapPin,
   Calendar,
-  DollarSign,
   Ticket,
   FileText,
   Wrench,
   MessageSquare,
-  Clock,
   TrendingUp,
   AlertTriangle,
   Plus,
-  ChevronRight,
   X,
 } from 'lucide-react';
-import { CRMService, Customer360, CustomerTimelineEvent } from '../../services/CRMService';
+import { CRMService, Customer360 } from '../../services/CRMService';
 import { NewInteractionModal } from './NewInteractionModal';
 
 interface Customer360ViewProps {

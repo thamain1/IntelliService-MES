@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Clock, DollarSign, TrendingUp, Users } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -67,16 +67,17 @@ export function LaborEfficiencyInsight() {
       > = {};
 
       // Process all completed time logs (all roles)
-      (timeLogs || []).forEach((log: any) => {
-        if (!log.clock_out_time) return;
+      (timeLogs || []).forEach((log: unknown) => {
+        const timeLog = log as { clock_out_time?: string; clock_in_time?: string; total_hours?: number; ticket_id?: string; user_id?: string; profiles?: { full_name?: string } };
+        if (!timeLog.clock_out_time) return;
 
         // Use total_hours if available, otherwise calculate
-        const hours = log.total_hours ||
-          (new Date(log.clock_out_time).getTime() - new Date(log.clock_in_time).getTime()) /
+        const hours = timeLog.total_hours ||
+          (new Date(timeLog.clock_out_time).getTime() - new Date(timeLog.clock_in_time || '').getTime()) /
           (1000 * 60 * 60);
 
         // Time logged against a ticket is considered billable
-        const isBillable = !!log.ticket_id;
+        const isBillable = !!timeLog.ticket_id;
 
         if (isBillable) {
           billableHours += hours;
@@ -89,17 +90,19 @@ export function LaborEfficiencyInsight() {
         // Estimate labor cost at $35/hr (typical tech cost)
         laborCost += hours * 35;
 
-        const techId = log.user_id;
-        const techName = log.profiles?.full_name || 'Unknown';
+        const techId = timeLog.user_id;
+        const techName = timeLog.profiles?.full_name || 'Unknown';
 
-        if (!techStats[techId]) {
-          techStats[techId] = { name: techName, billable: 0, nonBillable: 0 };
-        }
+        if (techId) {
+          if (!techStats[techId]) {
+            techStats[techId] = { name: techName, billable: 0, nonBillable: 0 };
+          }
 
-        if (isBillable) {
-          techStats[techId].billable += hours;
-        } else {
-          techStats[techId].nonBillable += hours;
+          if (isBillable) {
+            techStats[techId].billable += hours;
+          } else {
+            techStats[techId].nonBillable += hours;
+          }
         }
       });
 

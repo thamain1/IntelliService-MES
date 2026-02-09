@@ -89,9 +89,10 @@ export function PartInventoryModal({ partId, partName, onClose }: PartInventoryM
       setShowTransferModal(false);
       setTransferData({ from_location_id: '', to_location_id: '', quantity: 0 });
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error transferring inventory:', error);
-      alert(error.message || 'Failed to transfer inventory. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to transfer inventory. Please try again.';
+      alert(message);
     }
   };
 

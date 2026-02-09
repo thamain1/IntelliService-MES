@@ -4,10 +4,10 @@ import { ExportService, ExportFormat } from '../../services/ExportService';
 import { supabase } from '../../lib/supabase';
 import { LaborRatesSettings } from './LaborRatesSettings';
 import { ReconciliationSession } from './ReconciliationSession';
-import { ReconciliationService, BankReconciliation as ServiceReconciliation } from '../../services/ReconciliationService';
+import { ReconciliationService } from '../../services/ReconciliationService';
 import { CashFlowReportView } from './CashFlowReportView';
 import { JobPLReportView } from './JobPLReportView';
-import { BillsView, NewBillModal, BillDetailModal, RecordPaymentModal, APAgingReport } from '../AP';
+import { NewBillModal, BillDetailModal, RecordPaymentModal, APAgingReport } from '../AP';
 import { APService, Bill, APSummary } from '../../services/APService';
 
 // Note: gl_accounts, journal_entries, and journal_entry_lines are database views, not tables
@@ -144,7 +144,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
   // AP state
   const [apSummary, setApSummary] = useState<APSummary | null>(null);
-  const [apLoading, setApLoading] = useState(false);
+  const [_apLoading, setApLoading] = useState(false);
   const [showNewBillModal, setShowNewBillModal] = useState(false);
   const [showBillDetailModal, setShowBillDetailModal] = useState(false);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
@@ -345,20 +345,21 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
       if (error) throw error;
 
       const today = new Date();
-      const invoices: ARInvoice[] = (data || []).map((inv: any) => {
+      const invoices: ARInvoice[] = (data || []).map((inv: unknown) => {
+        const invoice = inv as { id: string; invoice_number: string; customer_id: string; issue_date: string; due_date: string; balance_due: number; customers?: { name: string } };
         const dueDate = new Date(inv.due_date);
         const diffTime = today.getTime() - dueDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const daysOverdue = diffDays > 0 ? diffDays : 0;
 
         return {
-          id: inv.id,
-          invoice_number: inv.invoice_number,
-          customer_id: inv.customer_id,
-          customer_name: inv.customers?.name || 'Unknown',
-          issue_date: inv.issue_date,
-          due_date: inv.due_date,
-          balance_due: inv.balance_due,
+          id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          customer_id: invoice.customer_id,
+          customer_name: invoice.customers?.name || 'Unknown',
+          issue_date: invoice.issue_date,
+          due_date: invoice.due_date,
+          balance_due: invoice.balance_due,
           days_overdue: daysOverdue,
         };
       });
@@ -410,7 +411,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     }
   };
 
-  const handleViewBill = (bill: Bill) => {
+  const _handleViewBill = (bill: Bill) => {
     setSelectedBill(bill);
     setShowBillDetailModal(true);
   };

@@ -65,17 +65,19 @@ export function TechnicianMetricsReport() {
 
       // Build lookup maps
       const hoursMap = new Map<string, number>();
-      timeLogs?.forEach((log: any) => {
-        if (log.ticket_id) {
-          const existing = hoursMap.get(log.ticket_id) || 0;
-          hoursMap.set(log.ticket_id, existing + Number(log.total_hours || 0));
+      timeLogs?.forEach((log) => {
+        const timeLog = log as { ticket_id?: string; total_hours?: number };
+        if (timeLog.ticket_id) {
+          const existing = hoursMap.get(timeLog.ticket_id) || 0;
+          hoursMap.set(timeLog.ticket_id, existing + Number(timeLog.total_hours || 0));
         }
       });
 
       const revenueMap = new Map<string, number>();
-      invoices?.forEach((inv: any) => {
-        if (inv.ticket_id) {
-          revenueMap.set(inv.ticket_id, Number(inv.total_amount || 0));
+      invoices?.forEach((inv) => {
+        const invoice = inv as { ticket_id?: string; total_amount?: number };
+        if (invoice.ticket_id) {
+          revenueMap.set(invoice.ticket_id, Number(invoice.total_amount || 0));
         }
       });
 
@@ -93,17 +95,18 @@ export function TechnicianMetricsReport() {
         { name: string; tickets: number; hours: number; revenue: number }
       > = {};
 
-      tickets?.forEach((ticket: any) => {
-        const techId = ticket.assigned_to;
-        const techName = ticket.profiles?.full_name || 'Unknown';
+      tickets?.forEach((ticket) => {
+        const ticketData = ticket as { id: string; assigned_to: string; profiles?: { full_name?: string } };
+        const techId = ticketData.assigned_to;
+        const techName = ticketData.profiles?.full_name || 'Unknown';
 
         if (!techStats[techId]) {
           techStats[techId] = { name: techName, tickets: 0, hours: 0, revenue: 0 };
         }
 
         techStats[techId].tickets += 1;
-        techStats[techId].hours += hoursMap.get(ticket.id) || 0;
-        techStats[techId].revenue += revenueMap.get(ticket.id) || 0;
+        techStats[techId].hours += hoursMap.get(ticketData.id) || 0;
+        techStats[techId].revenue += revenueMap.get(ticketData.id) || 0;
       });
 
       const techPerformance = Object.values(techStats).sort((a, b) => b.tickets - a.tickets);

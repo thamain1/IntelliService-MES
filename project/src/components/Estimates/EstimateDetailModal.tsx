@@ -82,10 +82,17 @@ export function EstimateDetailModal({ estimateId, isOpen, onClose, onSuccess }: 
   const [showSendModal, setShowSendModal] = useState(false);
   const [estimate, setEstimate] = useState<EstimateDetail | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
-  const [parts, setParts] = useState<any[]>([]);
-  const [equipment, setEquipment] = useState<any[]>([]);
+  const [parts, setParts] = useState<Array<{ id: string; name: string; cost: number }>>([]);
+  const [equipment, setEquipment] = useState<Array<{ id: string; manufacturer: string; model_number: string }>>([]);
   const [laborRates, setLaborRates] = useState<Array<{ key: string; name: string; rate: number }>>([]);
-  const [linkStatus, setLinkStatus] = useState<any>(null);
+  const [linkStatus, setLinkStatus] = useState<{
+    last_viewed_at?: string;
+    view_count?: number;
+    decision?: string;
+    decided_name?: string;
+    decided_at?: string;
+    decision_comment?: string;
+  } | null>(null);
   const [conversionInfo, setConversionInfo] = useState<ConversionInfo | null>(null);
   const [refreshingCosts, setRefreshingCosts] = useState(false);
 

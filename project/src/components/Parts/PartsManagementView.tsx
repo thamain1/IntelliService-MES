@@ -21,9 +21,9 @@ interface PartsManagementViewProps {
 
 export function PartsManagementView({ initialView, itemType = 'part' }: PartsManagementViewProps) {
   const isTool = itemType === 'tool';
-  const itemLabel = isTool ? 'Tool' : 'Part';
+  const _itemLabel = isTool ? 'Tool' : 'Part';
   const itemLabelPlural = isTool ? 'Tools' : 'Parts';
-  const ItemIcon = isTool ? Wrench : Package;
+  const _ItemIcon = isTool ? Wrench : Package;
   const getInitialTab = (): TabType => {
     switch (initialView) {
       case 'parts-inventory':
@@ -50,14 +50,27 @@ export function PartsManagementView({ initialView, itemType = 'part' }: PartsMan
   };
 
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
-  const [linkedRequest, setLinkedRequest] = useState<any>(null);
+  interface LinkedRequest {
+    request_id: string;
+    ticket_id: string;
+    ticket_number: string;
+    customer_name: string;
+    parts_requested: Array<{
+      line_id: string;
+      part_id: string;
+      part_number: string;
+      part_name: string;
+      quantity_requested: number;
+    }>;
+  }
+  const [linkedRequest, setLinkedRequest] = useState<LinkedRequest | null>(null);
 
   useEffect(() => {
     setActiveTab(getInitialTab());
   }, [initialView]);
 
   // Handle creating a PO from a parts request
-  const handleCreatePOFromRequest = (request: any) => {
+  const handleCreatePOFromRequest = (request: LinkedRequest) => {
     setLinkedRequest(request);
     setActiveTab('orders');
   };

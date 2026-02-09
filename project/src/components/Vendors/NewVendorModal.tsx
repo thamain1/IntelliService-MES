@@ -81,9 +81,9 @@ export function NewVendorModal({ onClose, onSuccess }: NewVendorModalProps) {
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating vendor:', error);
-      alert('Error creating vendor: ' + error.message);
+      alert('Error creating vendor: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }

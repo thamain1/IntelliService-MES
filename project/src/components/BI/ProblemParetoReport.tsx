@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, TrendingUp, BarChart3 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, Bar } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -271,10 +271,11 @@ export function ProblemParetoReport() {
                     <YAxis yAxisId="left" />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" />
                     <Tooltip
-                      formatter={(value: any, name: string) => {
-                        if (name === 'Count') return [value, 'Occurrences'];
-                        if (name === 'Cumulative %') return [`${value.toFixed(1)}%`, 'Cumulative'];
-                        return [value, name];
+                      formatter={(value: unknown, name: string) => {
+                        const numValue = value as number;
+                        if (name === 'Count') return [numValue, 'Occurrences'];
+                        if (name === 'Cumulative %') return [`${numValue.toFixed(1)}%`, 'Cumulative'];
+                        return [numValue, name];
                       }}
                     />
                     <Legend />
@@ -320,7 +321,7 @@ export function ProblemParetoReport() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {paretoData.map((row, index) => (
+                  {paretoData.map((row, _index) => (
                     <tr key={row.code} className={row.cumulative_percentage <= 80 ? 'bg-red-50 dark:bg-red-900/10' : ''}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
                         {row.code}

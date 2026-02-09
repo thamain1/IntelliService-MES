@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, Edit2, Save, Package, TrendingUp, FileCheck, Plus, Trash2 } from 'lucide-react';
+import { X, FileText, Edit2, Save, Package, TrendingUp, FileCheck, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { VendorContractService } from '../../services/VendorContractService';
 import type { Database } from '../../lib/database.types';
@@ -7,6 +7,35 @@ import type { Database } from '../../lib/database.types';
 type VendorContract = Database['public']['Tables']['vendor_contracts']['Row'] & {
   vendors?: { name: string; vendor_code: string };
 };
+
+interface ContractItem {
+  id: string;
+  parts?: { part_number: string; name: string } | null;
+  part_category?: string;
+  item_description_override?: string;
+  price_type: string;
+  contract_price?: number | null;
+  discount_percent?: number | null;
+  start_quantity_break: number;
+  lead_time_days_override?: number | null;
+}
+
+interface ContractSLA {
+  id: string;
+  metric: string;
+  metric_description?: string | null;
+  target_value: number;
+  target_unit: string;
+  breach_threshold?: number | null;
+  notes?: string | null;
+}
+
+interface ContractDocument {
+  id: string;
+  file_name: string;
+  document_type: string;
+  uploaded_at: string;
+}
 
 interface VendorContractDetailModalProps {
   contract: VendorContract;
@@ -38,11 +67,11 @@ export function VendorContractDetailModal({ contract: initialContract, onClose }
     notes: contract.notes || '',
   });
 
-  const [items, setItems] = useState<any[]>([]);
-  const [slas, setSlas] = useState<any[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [items, setItems] = useState<ContractItem[]>([]);
+  const [slas, setSlas] = useState<ContractSLA[]>([]);
+  const [documents, setDocuments] = useState<ContractDocument[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
-  const [editingSLA, setEditingSLA] = useState<any | null>(null);
+  const [editingSLA, setEditingSLA] = useState<ContractSLA | null>(null);
   const [showNewSLAForm, setShowNewSLAForm] = useState(false);
   const [slaFormData, setSlaFormData] = useState({
     metric: 'on_time_delivery',

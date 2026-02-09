@@ -47,9 +47,9 @@ export function ContractPlansView() {
 
       alert(`Plan ${plan.is_active ? 'deactivated' : 'activated'} successfully!`);
       loadPlans();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling plan status:', error);
-      alert(`Failed to update plan: ${error.message}`);
+      alert(`Failed to update plan: ${(error as Error).message}`);
     }
   };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Receipt, DollarSign, Calendar, AlertCircle, CheckCircle, Clock, Filter, Search, Download } from 'lucide-react';
+import { Receipt, AlertCircle, CheckCircle, Clock, Download } from 'lucide-react';
 import { VendorPaymentHistoryService, PaymentHistoryRecord } from '../../services/VendorPaymentHistoryService';
 import { supabase } from '../../lib/supabase';
 

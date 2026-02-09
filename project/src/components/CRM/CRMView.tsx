@@ -5,16 +5,8 @@ import {
   UserPlus,
   MessageSquare,
   BarChart3,
-  TrendingUp,
   DollarSign,
-  Users,
   Clock,
-  Phone,
-  Mail,
-  Calendar,
-  ChevronRight,
-  Plus,
-  Filter,
   RefreshCw,
 } from 'lucide-react';
 import { SalesPipeline } from './SalesPipeline';

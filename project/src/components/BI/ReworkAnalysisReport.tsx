@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, User, AlertTriangle, Clock, TrendingDown } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { RefreshCw, User, Clock, TrendingDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { BIPageLayout } from './BIPageLayout';
 import { DateRangeSelector } from './DateRangeSelector';
 import { useBIDateRange } from '../../hooks/useBIDateRange';
@@ -90,15 +90,12 @@ export function ReworkAnalysisReport() {
       const techCallbacks: Record<string, { name: string; callbacks: number; completed: number }> = {};
       const resolutionFailures: Record<string, number> = {};
 
-      // Build a map of ticket info
-      const ticketMap = new Map(completedTickets?.map(t => [t.id, t]) || []);
-
       // Track tech completed counts
       completedTickets?.forEach(t => {
         if (t.assigned_to) {
           if (!techCallbacks[t.assigned_to]) {
             techCallbacks[t.assigned_to] = {
-              name: (t.profiles as any)?.full_name || 'Unknown',
+              name: (t.profiles as unknown as { full_name?: string })?.full_name || 'Unknown',
               callbacks: 0,
               completed: 0,
             };
@@ -141,8 +138,8 @@ export function ReworkAnalysisReport() {
               callback_problem: callback.problem_code,
               callback_date: callback.created_at,
               technician_id: original.assigned_to,
-              technician_name: (original.profiles as any)?.full_name || null,
-              customer_name: (original.customers as any)?.name || null,
+              technician_name: (original.profiles as unknown as { full_name?: string })?.full_name || null,
+              customer_name: (original.customers as unknown as { name?: string })?.name || null,
               days_between: daysBetween,
             });
 
@@ -166,7 +163,7 @@ export function ReworkAnalysisReport() {
 
       // Calculate tech stats
       const techStatsArray: TechReworkStats[] = Object.entries(techCallbacks)
-        .filter(([_, stats]) => stats.completed > 0)
+        .filter(([_id, stats]) => stats.completed > 0)
         .map(([id, stats]) => ({
           technician_id: id,
           technician_name: stats.name,

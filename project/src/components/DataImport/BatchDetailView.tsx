@@ -7,7 +7,30 @@ import {
   BatchLogEvent,
   ImportPhase,
   RollbackResult,
+  ImportEntityType,
+  ValidationError,
 } from '../../services/DataImportService';
+
+interface PreviewRow {
+  row_number: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  state?: string;
+  external_customer_id?: string;
+  external_invoice_number?: string;
+  balance_due?: number;
+  due_date?: string;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+interface ErrorRow {
+  row_number: number;
+  validation_errors?: ValidationError[];
+  raw_row_json: Record<string, unknown>;
+  [key: string]: string | number | boolean | null | undefined | ValidationError[] | Record<string, unknown>;
+}
 
 interface BatchDetailViewProps {
   batchId: string;
@@ -22,8 +45,8 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [progress, setProgress] = useState<BatchProgress | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('preview');
-  const [previewRows, setPreviewRows] = useState<any[]>([]);
-  const [errorRows, setErrorRows] = useState<any[]>([]);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [errorRows, setErrorRows] = useState<ErrorRow[]>([]);
   const [logs, setLogs] = useState<BatchLogEvent[]>([]);
   const [polling, setPolling] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -85,11 +108,11 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
   const loadTabData = async (tab: TabType, entityType: string) => {
     try {
       if (tab === 'preview') {
-        const data = await DataImportService.getBatchPreviewRows(batchId, entityType as any);
-        setPreviewRows(data);
+        const data = await DataImportService.getBatchPreviewRows(batchId, entityType as unknown as ImportEntityType);
+        setPreviewRows(data as PreviewRow[]);
       } else if (tab === 'errors') {
-        const data = await DataImportService.getBatchErrorRows(batchId, entityType as any);
-        setErrorRows(data);
+        const data = await DataImportService.getBatchErrorRows(batchId, entityType as unknown as ImportEntityType);
+        setErrorRows(data as ErrorRow[]);
       } else if (tab === 'logs') {
         const data = await DataImportService.getBatchLogs(batchId);
         setLogs(data);
@@ -119,9 +142,9 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
       alert('Import cancelled successfully');
       if (onRefresh) onRefresh();
       await loadBatchDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelling import:', error);
-      alert('Failed to cancel import: ' + error.message);
+      alert('Failed to cancel import: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setActionInProgress(null);
     }
@@ -153,9 +176,9 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
 
       if (onRefresh) onRefresh();
       await loadBatchDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error rolling back import:', error);
-      alert('Failed to rollback import: ' + error.message);
+      alert('Failed to rollback import: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setActionInProgress(null);
     }
@@ -181,9 +204,9 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
       alert('Import batch deleted successfully');
       if (onRefresh) onRefresh();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting import batch:', error);
-      alert('Failed to delete import batch: ' + error.message);
+      alert('Failed to delete import batch: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setActionInProgress(null);
     }
@@ -484,7 +507,7 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
   );
 }
 
-function PreviewTab({ previewRows, entityType }: { previewRows: any[]; entityType: string }) {
+function PreviewTab({ previewRows, entityType }: { previewRows: PreviewRow[]; entityType: string }) {
   if (previewRows.length === 0) {
     return (
       <div className="text-center py-12">
@@ -549,7 +572,7 @@ function PreviewTab({ previewRows, entityType }: { previewRows: any[]; entityTyp
   );
 }
 
-function ErrorsTab({ errorRows, entityType }: { errorRows: any[]; entityType: string }) {
+function ErrorsTab({ errorRows, _entityType }: { errorRows: ErrorRow[]; _entityType: string }) {
   if (errorRows.length === 0) {
     return (
       <div className="text-center py-12">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, Search, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { FileText, Plus, Search, DollarSign, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { VendorContractService } from '../../services/VendorContractService';
 import type { Database } from '../../lib/database.types';
 import { NewVendorContractModal } from './NewVendorContractModal';

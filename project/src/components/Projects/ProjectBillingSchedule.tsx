@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, DollarSign, CheckCircle, Clock, Plus, FileText, AlertTriangle } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Plus, FileText, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { MilestoneInvoiceService } from '../../services/MilestoneInvoiceService';

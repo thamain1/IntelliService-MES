@@ -110,7 +110,7 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
     setLoading(true);
 
     try {
-      const insertData: any = {
+      const insertData: Record<string, unknown> = {
         ticket_type: formData.ticket_type,
         customer_id: formData.customer_id,
         priority: formData.priority,
@@ -265,8 +265,8 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
                   ...formData,
                   customer_id: customerId,
                   equipment_id: '',
-                  site_contact_name: (customer as any)?.site_contact_name || '',
-                  site_contact_phone: (customer as any)?.site_contact_phone || '',
+                  site_contact_name: (customer as unknown as { site_contact_name?: string })?.site_contact_name || '',
+                  site_contact_phone: (customer as unknown as { site_contact_phone?: string })?.site_contact_phone || '',
                 });
                 setSelectedCustomer(customerId);
               }}

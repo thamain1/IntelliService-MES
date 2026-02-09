@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, TrendingUp, Users, Settings, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { X, FileText, DollarSign, TrendingUp, Settings, RefreshCw, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { ContractAutomationService } from '../../services/ContractAutomationService';
@@ -57,9 +57,9 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
       } else {
         alert(`Failed to renew: ${result.error}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error renewing contract:', error);
-      alert(`Failed to renew contract: ${error.message}`);
+      alert(`Failed to renew contract: ${(error as Error).message}`);
     } finally {
       setRenewing(false);
     }
@@ -73,7 +73,7 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
         .from('service_contracts')
         .update({
           name: formData.name,
-          status: formData.status as any,
+          status: formData.status as unknown as Database['public']['Enums']['service_contract_status'],
           start_date: formData.start_date,
           end_date: formData.end_date || null,
           base_fee: parseFloat(formData.base_fee),
@@ -100,9 +100,9 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
       setContract(updated);
       setEditing(false);
       alert('Contract updated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating contract:', error);
-      alert(`Failed to update contract: ${error.message}`);
+      alert(`Failed to update contract: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -256,7 +256,7 @@ export function ContractDetailModal({ contract: initialContract, onClose }: Cont
                   </label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as unknown as Database['public']['Enums']['service_contract_status'] })}
                     className="input"
                   >
                     <option value="draft">Draft</option>

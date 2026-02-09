@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PackageCheck, Plus, Search, Calendar, Package, Wrench } from 'lucide-react';
+import { PackageCheck, Plus, Search, Calendar, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { ReceivingModal } from './ReceivingModal';

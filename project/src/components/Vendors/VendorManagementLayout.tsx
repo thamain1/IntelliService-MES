@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import * as React from 'react';
 import { Building2, FileText, TrendingUp, Receipt } from 'lucide-react';
 
 interface VendorManagementLayoutProps {

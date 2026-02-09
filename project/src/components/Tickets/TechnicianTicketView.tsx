@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Camera, Package, MessageSquare, CheckCircle, Clock, AlertTriangle, MapPin, Phone, User, Plus, X, Upload, History, Eye, AlertOctagon, PackageX, Navigation } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Camera, Package, MessageSquare, CheckCircle, Clock, AlertTriangle, MapPin, Phone, User, Plus, X, History, Eye, AlertOctagon, PackageX, Navigation } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { holdTicketForParts, reportTicketIssue } from '../../services/TicketHoldService';
@@ -431,7 +431,7 @@ export function TechnicianTicketView() {
     if (!selectedTicket || !profile?.id) return;
 
     try {
-      const { data, error } = await supabase.rpc('fn_end_ticket_work', {
+      const { error } = await supabase.rpc('fn_end_ticket_work', {
         p_tech_id: profile.id,
         p_ticket_id: selectedTicket.id,
       });
@@ -585,7 +585,7 @@ export function TechnicianTicketView() {
         }
       }
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         ticket_id: selectedTicket.id,
         technician_id: user.id,
         update_type: updateFormData.update_type,

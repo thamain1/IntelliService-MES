@@ -40,9 +40,9 @@ export function ExportMenu({ getExportData, disabled = false }: ExportMenuProps)
 
       // Perform export
       ExportService.export(data, format);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Export failed:', error);
-      alert('Export failed: ' + error.message);
+      alert('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setExporting(false);
     }

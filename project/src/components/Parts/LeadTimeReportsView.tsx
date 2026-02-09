@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, TrendingUp, CheckCircle, AlertCircle, Package } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, Package } from 'lucide-react';
 import { PartsOrderingService, VendorLeadTimeMetrics } from '../../services/PartsOrderingService';
 import { supabase } from '../../lib/supabase';
 
@@ -50,7 +50,7 @@ export function LeadTimeReportsView() {
     }
   };
 
-  const formatDate = (date: string | null) => {
+  const _formatDate = (date: string | null) => {
     if (!date) return '-';
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
