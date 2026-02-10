@@ -25,6 +25,12 @@ import {
   ShoppingCart,
   PackageCheck,
   Bell,
+  Factory,
+  ClipboardList,
+  Activity,
+  Timer,
+  Shield,
+  Boxes,
 } from 'lucide-react';
 
 interface Section {
@@ -92,6 +98,26 @@ export function HelpView() {
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Technician</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Field operations</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Assigned tickets, time clock, parts usage</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Supervisor</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Production oversight</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Work orders, work centers, team management, quality approval</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Operator</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Production floor</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Work order execution, time clock, quality data entry</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Material Handler</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Inventory operations</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Parts receiving, transfers, inventory counts, staging</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Quality Inspector</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Quality control</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">SPC monitoring, inspections, non-conformance reports</td>
                   </tr>
                 </tbody>
               </table>
@@ -808,6 +834,368 @@ export function HelpView() {
               <li><span className="font-medium">DSO</span> - Days sales outstanding and collection efficiency</li>
               <li><span className="font-medium">Labor Efficiency</span> - Billable vs non-billable hours</li>
             </ul>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'production-dashboard',
+      title: 'Production Dashboard',
+      icon: Factory,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              <span className="font-medium">MES Feature:</span> The Production Dashboard provides real-time visibility into manufacturing operations,
+              work center performance, and overall equipment effectiveness (OEE).
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Work Centers Overview</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              Work centers represent production stations or areas where manufacturing operations occur.
+              Each work center displays:
+            </p>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <li><span className="font-medium">Status</span> - Running, Idle, Down, or Setup</li>
+              <li><span className="font-medium">Current Work Order</span> - Active job being processed</li>
+              <li><span className="font-medium">OEE Score</span> - Real-time equipment effectiveness percentage</li>
+              <li><span className="font-medium">Cycle Time</span> - Current vs target cycle time</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">OEE Metrics</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              Overall Equipment Effectiveness (OEE) is calculated from three factors:
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Factor</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Formula</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Measures</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Availability</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Run Time / Planned Time</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Downtime losses</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Performance</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Actual Output / Theoretical Output</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Speed losses</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Quality</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Good Units / Total Units</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Defect losses</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mt-3">
+              <span className="font-medium">OEE = Availability × Performance × Quality</span>
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">OEE Score Interpretation</h3>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">85%+ World Class</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">65-84% Good</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">40-64% Needs Improvement</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">&lt;40% Critical</span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'work-orders-mfg',
+      title: 'Work Orders (Manufacturing)',
+      icon: ClipboardList,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              <span className="font-medium">MES Feature:</span> Manufacturing Work Orders track production jobs through the shop floor,
+              different from service tickets which track field service calls.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Work Order vs Service Ticket</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Feature</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Work Order (MFG)</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Service Ticket</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Purpose</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Production/Manufacturing</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Field Service/Repair</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Location</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Internal work centers</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Customer sites</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Tracking</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">OEE, cycle time, scrap</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Labor hours, parts used</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Assigned To</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Operators at work centers</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Field technicians</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Creating a Work Order</h3>
+            <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+              <li>Navigate to <span className="font-medium">Production → Work Orders</span></li>
+              <li>Click <span className="font-medium">New Work Order</span></li>
+              <li>Select the product/part to manufacture</li>
+              <li>Enter quantity required</li>
+              <li>Assign to a work center</li>
+              <li>Set priority and due date</li>
+              <li>Click <span className="font-medium">Create</span></li>
+            </ol>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Work Order Statuses</h3>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">Planned</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Released</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">In Progress</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Quality Hold</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Completed</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Cancelled</span>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Operator Workflow</h3>
+            <div className="space-y-3 text-gray-600 dark:text-gray-300">
+              <p><span className="font-medium">Start Work:</span> Select an assigned work order and click "Start" to begin tracking production time.</p>
+              <p><span className="font-medium">Record Output:</span> Enter good units produced and any scrap/rework quantities.</p>
+              <p><span className="font-medium">Log Downtime:</span> Record any equipment issues or planned stops with reason codes.</p>
+              <p><span className="font-medium">Complete:</span> When target quantity is reached, mark the work order complete for quality review.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'material-handler',
+      title: 'Material Handler Role',
+      icon: Boxes,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              <span className="font-medium">MES Role:</span> Material Handlers manage the flow of parts and materials through the facility,
+              including receiving, staging, transfers, and inventory counts.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Key Responsibilities</h3>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <li><span className="font-medium">Receiving</span> - Process incoming shipments and PO receipts</li>
+              <li><span className="font-medium">Staging</span> - Prepare materials for production work orders</li>
+              <li><span className="font-medium">Transfers</span> - Move parts between stock locations</li>
+              <li><span className="font-medium">Inventory Counts</span> - Perform cycle counts and reconciliations</li>
+              <li><span className="font-medium">Parts Pickup</span> - Process technician parts pickup requests</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Receiving Workflow</h3>
+            <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+              <li>Navigate to <span className="font-medium">Parts → Purchase Orders</span></li>
+              <li>Find the PO to receive (status: Approved)</li>
+              <li>Click <span className="font-medium">Receive</span></li>
+              <li>Enter received quantities for each line</li>
+              <li>Select destination location (warehouse or job staging)</li>
+              <li>For serialized parts, scan or enter serial numbers</li>
+              <li>Click <span className="font-medium">Complete Receipt</span></li>
+            </ol>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Job Staging</h3>
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+              <p className="text-green-800 dark:text-green-200 text-sm">
+                <span className="font-medium">Important:</span> Parts received for specific tickets should be placed in Job Staging,
+                not directly to a truck. This maintains chain of custody and allows reassignment flexibility.
+              </p>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              When parts are in Job Staging, they are reserved for a specific ticket but not yet assigned to a technician.
+              The assigned technician must acknowledge pickup to transfer custody.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Inventory Transfers</h3>
+            <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+              <li>Navigate to <span className="font-medium">Parts → Transfers</span></li>
+              <li>Click <span className="font-medium">New Transfer</span></li>
+              <li>Select source location</li>
+              <li>Select destination location</li>
+              <li>Add parts and quantities</li>
+              <li>Click <span className="font-medium">Complete Transfer</span></li>
+            </ol>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'quality-spc',
+      title: 'Quality & SPC',
+      icon: Activity,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              <span className="font-medium">MES Feature:</span> Statistical Process Control (SPC) monitors manufacturing processes
+              to detect variations before they result in defects, ensuring consistent quality output.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Control Charts</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              Control charts display process measurements over time with statistical limits:
+            </p>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <li><span className="font-medium">UCL (Upper Control Limit)</span> - Upper statistical boundary (typically mean + 3σ)</li>
+              <li><span className="font-medium">CL (Center Line)</span> - Process average/target</li>
+              <li><span className="font-medium">LCL (Lower Control Limit)</span> - Lower statistical boundary (typically mean - 3σ)</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">SPC Rule Violations</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              The system automatically detects violations of Western Electric rules:
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rule</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Violation Condition</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Rule 1</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">1 point beyond 3σ from center line</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Rule 2</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">9 consecutive points on same side of center</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Rule 3</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">6 consecutive points trending up or down</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Rule 4</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">14 points alternating up and down</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Recording Quality Data</h3>
+            <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+              <li>Navigate to <span className="font-medium">Quality → SPC Entry</span></li>
+              <li>Select the work center and characteristic being measured</li>
+              <li>Enter measurement value</li>
+              <li>System automatically plots on control chart</li>
+              <li>If violation detected, alert is triggered for review</li>
+            </ol>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Quality Inspector Tasks</h3>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <li><span className="font-medium">Monitor Dashboards</span> - Review real-time control charts for all active processes</li>
+              <li><span className="font-medium">Acknowledge Violations</span> - Review and document corrective actions for SPC violations</li>
+              <li><span className="font-medium">First Article Inspections</span> - Approve setup before production runs</li>
+              <li><span className="font-medium">Final Inspections</span> - Sign off on completed work orders</li>
+            </ul>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'oee-settings',
+      title: 'OEE Settings',
+      icon: Timer,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              <span className="font-medium">Configuration:</span> OEE Settings define how production time and availability
+              are calculated for your facility. These settings affect all OEE reporting.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Planned Production Time</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              Configure your facility's operating schedule:
+            </p>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+              <li><span className="font-medium">Hours per Day</span> - Planned production hours per shift/day (e.g., 8, 10, 12, or 24)</li>
+              <li><span className="font-medium">Days per Week</span> - Operating days per week (e.g., 5, 6, or 7)</li>
+              <li><span className="font-medium">Shifts</span> - Number of shifts if running multiple per day</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Configuring OEE Settings</h3>
+            <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+              <li>Navigate to <span className="font-medium">Settings → OEE Configuration</span></li>
+              <li>Enter hours per day (planned production hours)</li>
+              <li>Enter days per week (operating days)</li>
+              <li>Configure break times if they should be excluded from planned time</li>
+              <li>Set planned downtime for scheduled maintenance</li>
+              <li>Click <span className="font-medium">Save</span></li>
+            </ol>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">How Settings Affect Calculations</h3>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <p className="font-medium text-gray-900 dark:text-white mb-2">Example:</p>
+              <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                <li>Hours per Day: 8</li>
+                <li>Days per Week: 5</li>
+                <li>Weekly Planned Time: 40 hours</li>
+                <li>If equipment runs 36 hours with 4 hours downtime:</li>
+                <li className="font-medium">Availability = 36 / 40 = 90%</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Work Center Overrides</h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              Individual work centers can have different operating schedules. Override the global settings
+              at the work center level for equipment that runs extended hours or different shifts.
+            </p>
+          </div>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">Best Practice</h4>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              Be consistent with how you define planned time. If breaks are included in your 8-hour day,
+              don't also subtract break time in the OEE calculation. Choose one approach and apply it
+              consistently across all work centers.
+            </p>
           </div>
         </div>
       ),
