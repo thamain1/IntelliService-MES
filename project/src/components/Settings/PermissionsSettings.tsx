@@ -139,8 +139,22 @@ export function PermissionsSettings() {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data && data.length > 0) {
-        setRolePermissions(data as RolePermission[]);
-        
+        // Merge DB data with defaults - DB values override defaults, but keep defaults for roles not in DB
+        const dbRoleMap = new Map(data.map((rp: RolePermission) => [rp.role, rp.permissions]));
+        const mergedPermissions = DEFAULT_ROLE_PERMISSIONS.map(defaultRp => ({
+          role: defaultRp.role,
+          permissions: dbRoleMap.has(defaultRp.role)
+            ? (dbRoleMap.get(defaultRp.role) as string[])
+            : defaultRp.permissions
+        }));
+        // Add any roles from DB that aren't in defaults
+        data.forEach((dbRp: RolePermission) => {
+          if (!DEFAULT_ROLE_PERMISSIONS.find(d => d.role === dbRp.role)) {
+            mergedPermissions.push(dbRp);
+          }
+        });
+        setRolePermissions(mergedPermissions);
+
         // Update labels if we have new roles from DB
         const newLabels = { ...DEFAULT_ROLE_LABELS };
         data.forEach((rp: { role: string }) => {
