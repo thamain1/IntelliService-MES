@@ -296,16 +296,21 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
   }, []);
 
   const loadAPData = useCallback(async () => {
-    setApLoading(true);
     try {
       const summary = await APService.getAPSummary();
       setApSummary(summary);
     } catch (error) {
       console.error('Error loading AP data:', error);
-    } finally {
-      setApLoading(false);
     }
   }, []);
+
+  const handleAPDataRefresh = () => {
+    loadAPData();
+    setShowNewBillModal(false);
+    setShowBillDetailModal(false);
+    setShowRecordPaymentModal(false);
+    setSelectedBill(null);
+  };
 
   const loadReconciliationsData = useCallback(async () => {
     setReconLoading(true);
