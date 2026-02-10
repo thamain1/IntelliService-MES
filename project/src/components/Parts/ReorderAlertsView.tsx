@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Package, CheckCircle, XCircle, Clock, ShoppingCart, Zap, TrendingDown } from 'lucide-react';
 import { PartsOrderingService, ReorderAlert } from '../../services/PartsOrderingService';
 import { supabase } from '../../lib/supabase';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Plus, Search, ShoppingCart, X, Package, Calendar, DollarSign, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ReceivingModal } from './ReceivingModal';

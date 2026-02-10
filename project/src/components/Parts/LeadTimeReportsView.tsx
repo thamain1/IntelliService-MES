@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, AlertCircle, Package } from 'lucide-react';
 import { PartsOrderingService, VendorLeadTimeMetrics } from '../../services/PartsOrderingService';
 import { supabase } from '../../lib/supabase';
