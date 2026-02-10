@@ -107,7 +107,17 @@ const DEFAULT_ROLE_LABELS: Record<string, string> = {
 
 export function PermissionsSettings() {
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role?.toLowerCase().trim() === 'admin';
+
+  // DEBUG: Remove after permissions fix is verified
+  console.log('DEBUG Permissions:', {
+    profileExists: !!profile,
+    rawRole: profile?.role,
+    roleType: typeof profile?.role,
+    roleLength: profile?.role?.length,
+    isAdmin
+  });
+
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>(DEFAULT_ROLE_PERMISSIONS);
   const [roleLabels, setRoleLabels] = useState<Record<string, string>>(DEFAULT_ROLE_LABELS);
   const [selectedRole, setSelectedRole] = useState<string>('technician');
