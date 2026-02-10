@@ -5,8 +5,10 @@ import {
   ChevronRight,
   RefreshCw,
   AlertCircle,
+  Settings,
 } from 'lucide-react';
 import { ManufacturingService, WorkCenter } from '../../services/ManufacturingService';
+import { WorkCenterModal } from './WorkCenterModal';
 
 interface QueueItem {
   step_id: string;
@@ -33,6 +35,7 @@ export function WorkCenterQueue({ onSelectOrder }: WorkCenterQueueProps) {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null);
+  const [editingWorkCenter, setEditingWorkCenter] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -148,12 +151,24 @@ export function WorkCenterQueue({ onSelectOrder }: WorkCenterQueueProps) {
                     {centerQueue.length}
                   </p>
                 </div>
-                <div className={`p-2 rounded-lg ${
-                  inProgress > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-700'
-                }`}>
-                  <Layers className={`w-6 h-6 ${
-                    inProgress > 0 ? 'text-blue-600' : 'text-gray-400'
-                  }`} />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingWorkCenter(center.id);
+                    }}
+                    className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    title="Work Center Settings"
+                  >
+                    <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                  <div className={`p-2 rounded-lg ${
+                    inProgress > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-700'
+                  }`}>
+                    <Layers className={`w-6 h-6 ${
+                      inProgress > 0 ? 'text-blue-600' : 'text-gray-400'
+                    }`} />
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -281,6 +296,15 @@ export function WorkCenterQueue({ onSelectOrder }: WorkCenterQueueProps) {
           </div>
         )}
       </div>
+
+      {/* Work Center Settings Modal */}
+      {editingWorkCenter && (
+        <WorkCenterModal
+          workCenterId={editingWorkCenter}
+          onClose={() => setEditingWorkCenter(null)}
+          onSave={() => loadData()}
+        />
+      )}
     </div>
   );
 }

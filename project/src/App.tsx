@@ -9,7 +9,6 @@ import { SidebarNew } from './components/Layout/SidebarNew';
 const DashboardView = lazy(() => import('./components/Dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
 const TicketsView = lazy(() => import('./components/Tickets/TicketsView').then(m => ({ default: m.TicketsView })));
 const DispatchView = lazy(() => import('./components/Dispatch/DispatchView').then(m => ({ default: m.DispatchView })));
-const _TrackingView = lazy(() => import('./components/Tracking/TrackingView').then(m => ({ default: m.TrackingView })));
 const MappingView = lazy(() => import('./components/Mapping/MappingView').then(m => ({ default: m.MappingView })));
 const DispatchMapView = lazy(() => import('./components/Mapping/DispatchMapView').then(m => ({ default: m.DispatchMapView })));
 const PartsManagementView = lazy(() => import('./components/Parts/PartsManagementView').then(m => ({ default: m.PartsManagementView })));
@@ -126,9 +125,6 @@ function AppContent() {
         return <EstimatesViewContainer />;
       case 'dispatch':
         return <DispatchView />;
-      case 'tracking':
-      case 'mapping':
-        return <MappingView />;
       case 'dispatch-map':
         return <DispatchMapView />;
       case 'parts':
@@ -250,7 +246,7 @@ function AppContent() {
         return <CRMView initialTab="analytics" analyticsView="techs" />;
       case 'production':
       case 'production-dashboard':
-        return <ProductionDashboard />;
+        return <ProductionDashboard onNavigate={handleViewChange} />;
       case 'production-work-orders':
         return <WorkOrdersView />;
       case 'production-work-order-detail':
@@ -262,7 +258,7 @@ function AppContent() {
       case 'production-downtime':
         return <DowntimeLogView />;
       case 'production-work-centers':
-        return <ProductionDashboard initialView="work-centers" />;
+        return <ProductionDashboard initialView="work-centers" onNavigate={handleViewChange} />;
       case 'production-material-moves':
         return <MaterialHandlerView />;
       case 'production-reason-codes':

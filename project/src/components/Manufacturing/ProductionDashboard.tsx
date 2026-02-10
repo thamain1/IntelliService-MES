@@ -32,7 +32,7 @@ interface ProductionDashboardProps {
 // Auto-refresh interval in milliseconds (30 seconds)
 const AUTO_REFRESH_INTERVAL = 30000;
 
-export function ProductionDashboard({ initialView = 'dashboard', onNavigate: _onNavigate }: ProductionDashboardProps) {
+export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: ProductionDashboardProps) {
   const { profile } = useAuth();
   const [view, setView] = useState<'dashboard' | 'work-centers'>(initialView);
   const [orders, setOrders] = useState<ProductionDashboardItem[]>([]);
@@ -187,7 +187,11 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate: _on
             <p className="text-gray-600 dark:text-gray-400 mt-1">Monitor and manage production work centers</p>
           </div>
           <button
-            onClick={() => setView('dashboard')}
+            onClick={() => {
+              setView('dashboard');
+              // Also update parent navigation to sync sidebar
+              if (onNavigate) onNavigate('production-dashboard');
+            }}
             className="flex items-center space-x-2 px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <Factory className="w-4 h-4" />

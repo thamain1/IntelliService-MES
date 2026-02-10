@@ -338,8 +338,12 @@ export class OEEService {
           const goodCount = dayCounts.reduce((sum, c) => sum + (c.good_qty ?? 0), 0);
           const totalDowntime = dayDowntime.reduce((sum, d) => sum + (d.duration_seconds ?? 0), 0);
 
-          // Calculate OEE components
-          const plannedTime = this.DEFAULT_SHIFT_HOURS * 60 * 60; // 8 hours in seconds
+          // Get work center capacity for accurate planned time
+          const plannedTime = await this.getPlannedProductionTime(
+            workCenterId,
+            dayStart.toISOString(),
+            dayEnd.toISOString()
+          );
           const actualRunTime = Math.max(0, plannedTime - totalDowntime);
 
           const availability = plannedTime > 0
@@ -688,27 +692,54 @@ export class OEEService {
     const to = new Date(toDate);
     const diffMs = to.getTime() - from.getTime();
 
+    // Fetch work center capacity settings (hours_per_day, days_per_week)
+    let hoursPerDay = this.DEFAULT_SHIFT_HOURS;
+    let daysPerWeek = 5;
+
+    try {
+      const { data: wc } = await supabase
+        .from('work_centers')
+        .select('hours_per_day, days_per_week')
+        .eq('id', workCenterId)
+        .single();
+
+      if (wc) {
+        hoursPerDay = wc.hours_per_day ?? this.DEFAULT_SHIFT_HOURS;
+        daysPerWeek = wc.days_per_week ?? 5;
+      }
+    } catch {
+      // Use defaults if fetch fails
+    }
+
     // For same-day calculations (shift-level), use actual hours
     const diffHours = diffMs / (1000 * 60 * 60);
     if (diffHours <= 24) {
-      // Same day or shift - return actual hours (capped at shift hours)
-      const actualHours = Math.min(diffHours, this.DEFAULT_SHIFT_HOURS);
+      // Same day or shift - return actual hours (capped at work center hours)
+      const actualHours = Math.min(diffHours, hoursPerDay);
       return actualHours * 60 * 60; // Return in seconds
     }
 
-    // For multi-day calculations, use default shift hours (5-day week)
-    // Note: hours_per_day and days_per_week columns don't exist in work_centers table
-    const hoursPerDay = this.DEFAULT_SHIFT_HOURS;
-    const daysPerWeek = 5; // Default to 5-day work week
-
-    // Calculate working days (excluding weekends)
+    // For multi-day calculations, use work center capacity settings
+    // Calculate working days based on days_per_week configuration
     let workingDays = 0;
     const current = new Date(from);
 
+    // Build set of working days (0=Sunday, 6=Saturday)
+    // For 5-day week: Mon-Fri (1-5)
+    // For 6-day week: Mon-Sat (1-6)
+    // For 7-day week: all days
+    const workDaysSet = new Set<number>();
+    if (daysPerWeek >= 7) {
+      for (let i = 0; i < 7; i++) workDaysSet.add(i);
+    } else if (daysPerWeek >= 6) {
+      for (let i = 1; i <= 6; i++) workDaysSet.add(i); // Mon-Sat
+    } else {
+      for (let i = 1; i <= Math.min(daysPerWeek, 5); i++) workDaysSet.add(i); // Mon-Fri (or less)
+    }
+
     while (current <= to) {
       const dayOfWeek = current.getDay();
-      // Skip weekends (Saturday = 6, Sunday = 0)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      if (workDaysSet.has(dayOfWeek)) {
         workingDays++;
       }
       current.setDate(current.getDate() + 1);
