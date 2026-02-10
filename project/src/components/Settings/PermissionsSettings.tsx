@@ -16,12 +16,13 @@ interface RolePermission {
 }
 
 const PERMISSIONS: Permission[] = [
-  // Tickets
+  // Tickets (Field Service)
   { id: 'tickets.view', name: 'View Tickets', description: 'View all tickets', category: 'Tickets' },
   { id: 'tickets.create', name: 'Create Tickets', description: 'Create new tickets', category: 'Tickets' },
   { id: 'tickets.edit', name: 'Edit Tickets', description: 'Edit existing tickets', category: 'Tickets' },
   { id: 'tickets.delete', name: 'Delete Tickets', description: 'Delete tickets', category: 'Tickets' },
   { id: 'tickets.assign', name: 'Assign Tickets', description: 'Assign tickets to technicians', category: 'Tickets' },
+  { id: 'tickets.approve', name: 'Approve Tickets', description: 'Approve completed work', category: 'Tickets' },
 
   // Customers
   { id: 'customers.view', name: 'View Customers', description: 'View customer information', category: 'Customers' },
@@ -46,10 +47,24 @@ const PERMISSIONS: Permission[] = [
   { id: 'inventory.view', name: 'View Inventory', description: 'View parts inventory', category: 'Inventory' },
   { id: 'inventory.adjust', name: 'Adjust Inventory', description: 'Adjust stock levels', category: 'Inventory' },
   { id: 'inventory.order', name: 'Create Orders', description: 'Create purchase orders', category: 'Inventory' },
+  { id: 'inventory.receive', name: 'Receive Inventory', description: 'Receive POs and shipments', category: 'Inventory' },
+  { id: 'inventory.transfer', name: 'Transfer Inventory', description: 'Move parts between locations', category: 'Inventory' },
 
   // Dispatch
   { id: 'dispatch.view', name: 'View Dispatch', description: 'View dispatch board', category: 'Dispatch' },
   { id: 'dispatch.schedule', name: 'Schedule Jobs', description: 'Schedule and assign jobs', category: 'Dispatch' },
+
+  // Production (MES)
+  { id: 'production.view', name: 'View Production', description: 'View production dashboard', category: 'Production' },
+  { id: 'production.workorders', name: 'Manage Work Orders', description: 'Create and edit work orders', category: 'Production' },
+  { id: 'production.execute', name: 'Execute Work Orders', description: 'Start/stop/complete work orders', category: 'Production' },
+  { id: 'production.workcenters', name: 'Manage Work Centers', description: 'Configure work center settings', category: 'Production' },
+
+  // Quality (MES)
+  { id: 'quality.view', name: 'View Quality Data', description: 'View SPC charts and inspections', category: 'Quality' },
+  { id: 'quality.entry', name: 'Enter Quality Data', description: 'Record measurements and inspections', category: 'Quality' },
+  { id: 'quality.approve', name: 'Approve Quality', description: 'Approve inspections and sign-offs', category: 'Quality' },
+  { id: 'quality.violations', name: 'Manage Violations', description: 'Acknowledge and resolve SPC violations', category: 'Quality' },
 
   // Reports
   { id: 'reports.view', name: 'View Reports', description: 'View all reports', category: 'Reports' },
@@ -76,14 +91,35 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
       'inventory.view', 'inventory.adjust', 'inventory.order',
       'dispatch.view', 'dispatch.schedule',
       'reports.view', 'reports.export',
+      'settings.users',
     ],
   },
   {
     role: 'dispatcher',
     permissions: [
       'tickets.view', 'tickets.create', 'tickets.edit', 'tickets.assign',
-      'customers.view',
+      'customers.view', 'customers.create',
       'dispatch.view', 'dispatch.schedule',
+      'inventory.view',
+      'reports.view',
+    ],
+  },
+  {
+    role: 'accounting',
+    permissions: [
+      'invoices.view', 'invoices.create', 'invoices.edit', 'invoices.send', 'invoices.void',
+      'accounting.view', 'accounting.journal', 'accounting.reconcile', 'accounting.reports',
+      'customers.view',
+      'reports.view', 'reports.export',
+    ],
+  },
+  {
+    role: 'lead_tech',
+    permissions: [
+      'tickets.view', 'tickets.create', 'tickets.edit', 'tickets.assign', 'tickets.approve',
+      'customers.view',
+      'inventory.view', 'inventory.adjust',
+      'dispatch.view',
       'reports.view',
     ],
   },
@@ -95,14 +131,52 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
       'inventory.view',
     ],
   },
+  {
+    role: 'supervisor',
+    permissions: [
+      'production.view', 'production.workorders', 'production.execute', 'production.workcenters',
+      'quality.view', 'quality.entry', 'quality.approve', 'quality.violations',
+      'inventory.view', 'inventory.adjust',
+      'reports.view', 'reports.export',
+    ],
+  },
+  {
+    role: 'operator',
+    permissions: [
+      'production.view', 'production.execute',
+      'quality.view', 'quality.entry',
+      'inventory.view',
+    ],
+  },
+  {
+    role: 'material_handler',
+    permissions: [
+      'inventory.view', 'inventory.adjust', 'inventory.receive', 'inventory.transfer',
+      'production.view',
+      'reports.view',
+    ],
+  },
+  {
+    role: 'quality_inspector',
+    permissions: [
+      'quality.view', 'quality.entry', 'quality.approve', 'quality.violations',
+      'production.view',
+      'reports.view', 'reports.export',
+    ],
+  },
 ];
 
 const DEFAULT_ROLE_LABELS: Record<string, string> = {
   admin: 'Administrator',
   office_manager: 'Office Manager',
   dispatcher: 'Dispatcher',
+  accounting: 'Accounting',
+  lead_tech: 'Lead Tech / Field Supervisor',
   technician: 'Technician',
+  supervisor: 'Production Supervisor',
+  operator: 'Operator',
   material_handler: 'Material Handler',
+  quality_inspector: 'Quality Inspector',
 };
 
 export function PermissionsSettings() {

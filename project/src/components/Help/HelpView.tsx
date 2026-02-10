@@ -84,40 +84,67 @@ export function HelpView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Core Roles</td>
+                  </tr>
                   <tr>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Admin</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Full system access</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">All features, user management, settings</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">All features, user management, settings, permissions</td>
+                  </tr>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Office Roles</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Office Manager</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Office operations lead</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Tickets, customers, invoicing, dispatch, user management</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Dispatcher</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Office operations</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Scheduling, tickets, invoicing, customers</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Scheduling operations</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Scheduling, tickets, dispatch board, customers</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Accounting</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Finance operations</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Invoicing, AR/AP, journal entries, financial reports</td>
+                  </tr>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Field Service Roles</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Lead Tech / Field Supervisor</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Field team lead</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Tickets, approve work, assign techs, inventory adjustments</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Technician</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Field operations</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Assigned tickets, time clock, parts usage</td>
                   </tr>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Manufacturing Roles (MES)</td>
+                  </tr>
                   <tr>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Supervisor</td>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Production Supervisor</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Production oversight</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Work orders, work centers, team management, quality approval</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Work orders, work centers, quality approval, OEE settings</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Operator</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Production floor</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Work order execution, time clock, quality data entry</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Execute work orders, time clock, quality data entry</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Material Handler</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Inventory operations</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Parts receiving, transfers, inventory counts, staging</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Receiving, transfers, inventory counts, staging</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">Quality Inspector</td>
                     <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Quality control</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">SPC monitoring, inspections, non-conformance reports</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">SPC monitoring, inspections, violation management</td>
                   </tr>
                 </tbody>
               </table>
