@@ -109,7 +109,8 @@ export function DSOInsight() {
 
   useEffect(() => {
     loadMetrics();
-  }, [loadMetrics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange]);
 
   const getExportData = useCallback((): ExportData => {
     return {

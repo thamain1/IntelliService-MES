@@ -35,7 +35,8 @@ export function LaborEfficiencyInsight() {
 
   useEffect(() => {
     loadMetrics();
-  }, [loadMetrics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange]);
 
   const loadMetrics = useCallback(async () => {
     try {
