@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { X, Mail, Phone, MapPin, Edit, Trash2, Package, Wrench, FileText, Calendar, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';

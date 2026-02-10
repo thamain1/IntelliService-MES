@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Search, X, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 

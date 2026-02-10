@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, FileText, User, Calendar, Mail, Phone, MapPin, Edit, Save, Plus, Trash2, Send, CheckCircle, XCircle, Eye, Link as LinkIcon, RefreshCw, DollarSign, ExternalLink, Briefcase, Wrench } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';

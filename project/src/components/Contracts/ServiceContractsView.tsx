@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FileText, Plus, Search, Calendar, DollarSign, Users, AlertTriangle, RefreshCw, CheckCircle, Clock, BarChart2, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';

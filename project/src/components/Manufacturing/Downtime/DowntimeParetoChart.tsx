@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TrendingDown, AlertTriangle } from 'lucide-react';
 import { DowntimeService, DowntimeParetoItem } from '../../../services/DowntimeService';
 

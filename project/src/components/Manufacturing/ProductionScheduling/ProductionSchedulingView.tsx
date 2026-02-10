@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Layers } from 'lucide-react';
 import { ProductionSchedulingService, WorkCenterSchedule, WorkCenterCapacity } from '../../../services/ProductionSchedulingService';
 import { ManufacturingService, WorkCenter } from '../../../services/ManufacturingService';

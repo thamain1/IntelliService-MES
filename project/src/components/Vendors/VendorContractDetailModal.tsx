@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, FileText, Edit2, Save, Package, TrendingUp, FileCheck, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { VendorContractService } from '../../services/VendorContractService';

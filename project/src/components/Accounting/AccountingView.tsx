@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Calendar, FileText, X, Filter, AlertCircle, Wallet, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { LaborRatesSettings } from './LaborRatesSettings';

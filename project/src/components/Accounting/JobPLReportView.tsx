@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Calendar, Download, RefreshCw, AlertCircle, Filter, Building2, Wrench } from 'lucide-react';
 import { JobPLService, JobPLSummary, JobType, JobStatus } from '../../services/JobPLService';
 import { supabase } from '../../lib/supabase';

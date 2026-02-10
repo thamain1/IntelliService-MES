@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FileText, Plus, Search, DollarSign, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { VendorContractService } from '../../services/VendorContractService';
 import type { Database } from '../../lib/database.types';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, XCircle, FileText, Calendar, DollarSign, Clock, AlertCircle, Loader } from 'lucide-react';
 
 interface EstimatePortalProps {

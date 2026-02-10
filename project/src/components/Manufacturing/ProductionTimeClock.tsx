@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Play, Square, Timer } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ManufacturingService } from '../../services/ManufacturingService';

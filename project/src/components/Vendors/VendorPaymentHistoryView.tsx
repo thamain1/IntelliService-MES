@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Receipt, AlertCircle, CheckCircle, Clock, Download } from 'lucide-react';
 import { VendorPaymentHistoryService, PaymentHistoryRecord } from '../../services/VendorPaymentHistoryService';
 import { supabase } from '../../lib/supabase';

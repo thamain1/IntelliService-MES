@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Package, Plus, Trash2, CheckCircle, RotateCcw } from 'lucide-react';
 import { ManufacturingService, BOMItem, CreateBOMItemInput } from '../../../services/ManufacturingService';
 import { MESInventoryService, MaterialConsumptionLog } from '../../../services/MESInventoryService';

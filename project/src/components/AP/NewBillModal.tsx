@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Trash2, DollarSign, Building2, Calendar, FileText, AlertCircle } from 'lucide-react';
 import { APService, CreateBillInput, BillLineItem } from '../../services/APService';
 import { supabase } from '../../lib/supabase';

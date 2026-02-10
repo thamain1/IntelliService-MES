@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, DollarSign, AlertCircle } from 'lucide-react';
 import { ReconciliationService, AdjustmentType } from '../../services/ReconciliationService';
 import { supabase } from '../../lib/supabase';
