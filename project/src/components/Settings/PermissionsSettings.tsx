@@ -106,7 +106,7 @@ const DEFAULT_ROLE_LABELS: Record<string, string> = {
 };
 
 export function PermissionsSettings() {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>(DEFAULT_ROLE_PERMISSIONS);
   const [roleLabels, setRoleLabels] = useState<Record<string, string>>(DEFAULT_ROLE_LABELS);
@@ -253,7 +253,7 @@ export function PermissionsSettings() {
             </p>
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
               Your role: <span className="font-semibold">{profile?.role || 'Loading...'}</span>
-              {!isAdmin && !authLoading && (
+              {!isAdmin && profile && (
                 <span className="ml-2 text-amber-600 dark:text-amber-400">(Admin access required to edit)</span>
               )}
             </p>
@@ -324,12 +324,12 @@ export function PermissionsSettings() {
                     </div>
                     <button
                       onClick={() => togglePermission(selectedRole, permission.id)}
-                      disabled={authLoading || !isAdmin}
+                      disabled={!isAdmin}
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                         hasPermission(selectedRole, permission.id)
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
-                      } ${(authLoading || !isAdmin) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
+                      } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
                     >
                       {hasPermission(selectedRole, permission.id) ? (
                         <Check className="w-4 h-4" />
