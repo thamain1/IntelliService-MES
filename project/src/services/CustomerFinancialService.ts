@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/database.types';
+import type { Database as _Database } from '../lib/database.types';
 
 export interface CustomerFinancialSummary {
   total_revenue_lifetime: number;

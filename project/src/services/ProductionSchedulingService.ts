@@ -143,9 +143,9 @@ export class ProductionSchedulingService {
       if (error) throw error;
 
       return { success: true, schedule: data as WorkCenterSchedule };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error scheduling order:', error);
-      return { success: false, error: error.message || 'Failed to schedule order' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to schedule order' };
     }
   }
 
@@ -283,9 +283,9 @@ export class ProductionSchedulingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating schedule:', error);
-      return { success: false, error: error.message || 'Failed to update schedule' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update schedule' };
     }
   }
 
@@ -309,9 +309,9 @@ export class ProductionSchedulingService {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error reordering schedules:', error);
-      return { success: false, error: error.message || 'Failed to reorder schedules' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to reorder schedules' };
     }
   }
 
@@ -362,11 +362,12 @@ export class ProductionSchedulingService {
 
         // Check for overlap
         if (newStart < existingEnd && newEnd > existingStart) {
+          const orderData = schedule.production_order as unknown as { order_number?: string } | null;
           conflicts.push({
             type: 'overlap',
-            message: `Overlaps with order ${(schedule.production_order as any)?.order_number || 'Unknown'}`,
+            message: `Overlaps with order ${orderData?.order_number || 'Unknown'}`,
             conflicting_schedule_id: schedule.id,
-            conflicting_order_number: (schedule.production_order as any)?.order_number,
+            conflicting_order_number: orderData?.order_number,
             start_ts: schedule.scheduled_start_ts,
             end_ts: schedule.scheduled_end_ts || new Date(existingEnd).toISOString(),
           });
@@ -574,9 +575,9 @@ export class ProductionSchedulingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error starting operation:', error);
-      return { success: false, error: error.message || 'Failed to start operation' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to start operation' };
     }
   }
 
@@ -593,9 +594,9 @@ export class ProductionSchedulingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error pausing operation:', error);
-      return { success: false, error: error.message || 'Failed to pause operation' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to pause operation' };
     }
   }
 
@@ -618,9 +619,9 @@ export class ProductionSchedulingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error completing operation:', error);
-      return { success: false, error: error.message || 'Failed to complete operation' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to complete operation' };
     }
   }
 
@@ -650,9 +651,9 @@ export class ProductionSchedulingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting schedule:', error);
-      return { success: false, error: error.message || 'Failed to delete schedule' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to delete schedule' };
     }
   }
 }

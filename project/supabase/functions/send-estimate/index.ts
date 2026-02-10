@@ -198,12 +198,12 @@ Deno.serve(async (req: Request) => {
     // The frontend will construct the full URL from the token
     const portalUrl = `/estimate-portal/${plainToken}`;
 
-    const deliveryResults: any[] = [];
+    const deliveryResults: Array<{ channel: string; status: string; to?: string; error?: string }> = [];
 
     if (send_email && toEmail) {
       try {
         const emailSubject = `Estimate ${estimate.estimate_number} from ${estimate.customers.name || 'Your Service Provider'}`;
-        const emailBody = `
+        const _emailBody = `
 Hello ${contactName || 'Valued Customer'},
 
 Please review your estimate ${estimate.estimate_number}.
@@ -336,7 +336,7 @@ Thank you for your business!
 
     const shouldUpdateStatus = estimate.status === 'draft';
     if (shouldUpdateStatus || !estimate.sent_date) {
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (!estimate.sent_date) {
         updateData.sent_date = new Date().toISOString();
       }

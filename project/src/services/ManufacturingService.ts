@@ -16,7 +16,7 @@ type BOMItemRow = Database['public']['Tables']['bill_of_materials']['Row'];
 type WorkCenterRow = Database['public']['Tables']['work_centers']['Row'];
 type MaterialMoveRequestRow = Database['public']['Tables']['material_move_requests']['Row'];
 type TimeLogRow = Database['public']['Tables']['production_time_logs']['Row'];
-type WIPTrackingRow = Database['public']['Tables']['wip_tracking']['Row'];
+type _WIPTrackingRow = Database['public']['Tables']['wip_tracking']['Row'];
 
 export interface ProductionOrder extends ProductionOrderRow {
   customer?: { id: string; name: string } | null;
@@ -779,7 +779,7 @@ export class ManufacturingService {
   /**
    * Get work center queue
    */
-  static async getWorkCenterQueue(centerId?: string): Promise<any[]> {
+  static async getWorkCenterQueue(centerId?: string): Promise<unknown[]> {
     try {
       let query = supabase
         .from('vw_work_center_queue')
@@ -951,9 +951,9 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true, id: data.id };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error requesting material move:', error);
-      return { success: false, error: error.message || 'Failed to request move' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to request move' };
     }
   }
 
@@ -970,9 +970,9 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error assigning move:', error);
-      return { success: false, error: error.message || 'Failed to assign move' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to assign move' };
     }
   }
 
@@ -995,9 +995,9 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error starting move:', error);
-      return { success: false, error: error.message || 'Failed to start move' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to start move' };
     }
   }
 
@@ -1017,9 +1017,9 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error completing move:', error);
-      return { success: false, error: error.message || 'Failed to complete move' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to complete move' };
     }
   }
 
@@ -1039,9 +1039,9 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error cancelling move:', error);
-      return { success: false, error: error.message || 'Failed to cancel move' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to cancel move' };
     }
   }
 
@@ -1065,9 +1065,9 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error claiming move:', error);
-      return { success: false, error: error.message || 'Failed to claim move' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to claim move' };
     }
   }
 }

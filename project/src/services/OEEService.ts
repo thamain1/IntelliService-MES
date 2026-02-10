@@ -387,7 +387,7 @@ export class OEEService {
   static async getIdealCycleTime(
     workCenterId: string,
     equipmentAssetId?: string,
-    productId?: string
+    _productId?: string
   ): Promise<CycleTimeInfo> {
     try {
       // 1. Check equipment asset
@@ -505,9 +505,9 @@ export class OEEService {
       }
 
       return { success: false, error: 'Must specify equipment_asset_id or work_center_id' };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error setting cycle time:', error);
-      return { success: false, error: error.message || 'Failed to set cycle time' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to set cycle time' };
     }
   }
 
@@ -559,9 +559,9 @@ export class OEEService {
       if (error) throw error;
 
       return { success: true, count: data as ProductionCount };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error recording production count:', error);
-      return { success: false, error: error.message || 'Failed to record count' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to record count' };
     }
   }
 
@@ -725,7 +725,7 @@ export class OEEService {
       const totalHours = workingDays * hoursPerDay;
 
       return totalHours * 60 * 60; // Return in seconds
-    } catch (error) {
+    } catch (_error) {
       // Fallback to simple calculation
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       const totalHours = diffDays * this.DEFAULT_SHIFT_HOURS;

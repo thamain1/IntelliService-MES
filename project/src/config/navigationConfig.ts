@@ -3,7 +3,7 @@ import {
   Ticket,
   ClipboardList,
   Calendar,
-  MapPin,
+  MapPin as _MapPin,
   Map,
   Clock,
   Package,

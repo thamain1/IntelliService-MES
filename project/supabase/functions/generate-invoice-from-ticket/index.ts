@@ -13,6 +13,17 @@ interface GenerateInvoiceRequest {
   notes?: string;
 }
 
+interface InvoiceLineItem {
+  item_type: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  taxable: boolean;
+  ticket_id: string;
+  time_log_id: string;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -148,7 +159,7 @@ Deno.serve(async (req: Request) => {
 
     // Calculate totals
     let subtotal = 0;
-    const lineItems: any[] = [];
+    const lineItems: InvoiceLineItem[] = [];
 
     // Add labor line items
     if (timeLogs && timeLogs.length > 0) {

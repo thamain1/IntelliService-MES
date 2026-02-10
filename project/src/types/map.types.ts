@@ -1,7 +1,7 @@
 import type { Database } from '../lib/database.types';
 
 type Ticket = Database['public']['Tables']['tickets']['Row'];
-type Customer = Database['public']['Tables']['customers']['Row'];
+type _Customer = Database['public']['Tables']['customers']['Row'];
 
 export interface TechnicianMapData {
   id: string;

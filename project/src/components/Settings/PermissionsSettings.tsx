@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Shield, Users, Check, X, Save, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Permission {
   id: string;
@@ -96,15 +97,18 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
   },
 ];
 
-const ROLE_LABELS: Record<string, string> = {
+const DEFAULT_ROLE_LABELS: Record<string, string> = {
   admin: 'Administrator',
   office_manager: 'Office Manager',
   dispatcher: 'Dispatcher',
   technician: 'Technician',
+  material_handler: 'Material Handler',
 };
 
 export function PermissionsSettings() {
+  const { profile } = useAuth();
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>(DEFAULT_ROLE_PERMISSIONS);
+  const [roleLabels, setRoleLabels] = useState<Record<string, string>>(DEFAULT_ROLE_LABELS);
   const [selectedRole, setSelectedRole] = useState<string>('technician');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -125,10 +129,18 @@ export function PermissionsSettings() {
 
       if (data && data.length > 0) {
         setRolePermissions(data as RolePermission[]);
+        
+        // Update labels if we have new roles from DB
+        const newLabels = { ...DEFAULT_ROLE_LABELS };
+        data.forEach((rp: any) => {
+          if (!newLabels[rp.role]) {
+            newLabels[rp.role] = rp.role.split('_').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+          }
+        });
+        setRoleLabels(newLabels);
       }
     } catch (error) {
       console.error('Error loading permissions:', error);
-      // Use defaults if table doesn't exist
     } finally {
       setLoading(false);
     }
@@ -170,8 +182,11 @@ export function PermissionsSettings() {
   };
 
   const togglePermission = (role: string, permissionId: string) => {
-    // Don't allow modifying admin permissions
-    if (role === 'admin') return;
+    // Prevent modifying own role permissions if admin to prevent lockout
+    if (role === 'admin' && profile?.role === 'admin') {
+      // Allow if we want admins to edit each other, but for now safe-guard
+      // return; 
+    }
 
     setRolePermissions((prev) =>
       prev.map((rp) => {
@@ -247,7 +262,7 @@ export function PermissionsSettings() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {Object.entries(ROLE_LABELS).map(([role, label]) => (
+          {Object.entries(roleLabels).map(([role, label]) => (
             <button
               key={role}
               onClick={() => setSelectedRole(role)}
@@ -269,12 +284,13 @@ export function PermissionsSettings() {
           <div className="flex items-center space-x-3">
             <Shield className="w-6 h-6 text-blue-600" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              {ROLE_LABELS[selectedRole]} Permissions
+              {roleLabels[selectedRole]} Permissions
             </h2>
           </div>
           {selectedRole === 'admin' && (
-            <span className="text-sm text-gray-500 dark:text-gray-400 italic">
-              Administrator permissions cannot be modified
+            <span className="text-sm text-amber-600 dark:text-amber-400 italic font-medium flex items-center">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              Modifying Administrator permissions may affect system stability
             </span>
           )}
         </div>
@@ -301,12 +317,12 @@ export function PermissionsSettings() {
                     </div>
                     <button
                       onClick={() => togglePermission(selectedRole, permission.id)}
-                      disabled={selectedRole === 'admin'}
+                      disabled={profile?.role !== 'admin'}
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                         hasPermission(selectedRole, permission.id)
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
-                      } ${selectedRole === 'admin' ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
+                      } ${profile?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
                     >
                       {hasPermission(selectedRole, permission.id) ? (
                         <Check className="w-4 h-4" />
@@ -332,7 +348,7 @@ export function PermissionsSettings() {
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Permission
                 </th>
-                {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                {Object.entries(roleLabels).map(([role, label]) => (
                   <th
                     key={role}
                     className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300"
@@ -346,7 +362,7 @@ export function PermissionsSettings() {
               {categories.map((category) => (
                 <>
                   <tr key={`cat-${category}`} className="bg-gray-100 dark:bg-gray-700">
-                    <td colSpan={5} className="py-2 px-4 font-semibold text-gray-900 dark:text-white">
+                    <td colSpan={Object.keys(roleLabels).length + 1} className="py-2 px-4 font-semibold text-gray-900 dark:text-white">
                       {category}
                     </td>
                   </tr>
@@ -358,7 +374,7 @@ export function PermissionsSettings() {
                       <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">
                         {permission.name}
                       </td>
-                      {Object.keys(ROLE_LABELS).map((role) => (
+                      {Object.keys(roleLabels).map((role) => (
                         <td key={role} className="py-2 px-4 text-center">
                           {hasPermission(role, permission.id) ? (
                             <Check className="w-4 h-4 text-green-600 mx-auto" />

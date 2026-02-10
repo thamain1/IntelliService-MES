@@ -309,7 +309,7 @@ export class APService {
    * Update a bill
    */
   static async updateBill(billId: string, input: UpdateBillInput): Promise<Bill> {
-    const { data, error } = await supabase
+    const { data: _data, error } = await supabase
       .from('bills')
       .update({
         ...input,
