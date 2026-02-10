@@ -301,12 +301,18 @@ class SPCServiceClass {
     // Calculate process capability
     const capability = this.calculateProcessCapability(subgroups, characteristic);
 
-    // Get existing violations
-    const { data: violations } = await supabase
-      .from('spc_rule_violations')
-      .select('*')
-      .eq('characteristic_id', characteristicId)
-      .order('detected_at', { ascending: false });
+    // Get existing violations (table may not exist yet)
+    let violations: SPCRuleViolation[] = [];
+    try {
+      const { data } = await supabase
+        .from('spc_rule_violations')
+        .select('*')
+        .eq('characteristic_id', characteristicId)
+        .order('detected_at', { ascending: false });
+      violations = data || [];
+    } catch {
+      // Table doesn't exist yet - ignore
+    }
 
     return {
       characteristic_id: characteristicId,
@@ -600,20 +606,26 @@ class SPCServiceClass {
     subgroupId: string,
     violationType: SPCViolationType,
     details: Record<string, unknown>
-  ): Promise<SPCRuleViolation> {
-    const { data, error } = await supabase
-      .from('spc_rule_violations')
-      .insert({
-        characteristic_id: characteristicId,
-        subgroup_id: subgroupId,
-        violation_type: violationType,
-        details,
-      })
-      .select()
-      .single();
+  ): Promise<SPCRuleViolation | null> {
+    try {
+      const { data, error } = await supabase
+        .from('spc_rule_violations')
+        .insert({
+          characteristic_id: characteristicId,
+          subgroup_id: subgroupId,
+          violation_type: violationType,
+          details,
+        })
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch {
+      // Table doesn't exist yet - log and return null
+      console.warn('spc_rule_violations table not found - skipping violation creation');
+      return null;
+    }
   }
 
   // =====================================================
@@ -647,29 +659,40 @@ class SPCServiceClass {
       query = query.lte('detected_at', filters.to);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch {
+      // Table doesn't exist yet - return empty array
+      console.warn('spc_rule_violations table not found - returning empty array');
+      return [];
+    }
   }
 
   async acknowledgeViolation(
     violationId: string,
     acknowledgedBy: string,
     notes?: string
-  ): Promise<SPCRuleViolation> {
-    const { data, error } = await supabase
-      .from('spc_rule_violations')
-      .update({
-        acknowledged_by: acknowledgedBy,
-        acknowledged_at: new Date().toISOString(),
-        acknowledgment_notes: notes,
-      })
-      .eq('id', violationId)
-      .select()
-      .single();
+  ): Promise<SPCRuleViolation | null> {
+    try {
+      const { data, error } = await supabase
+        .from('spc_rule_violations')
+        .update({
+          acknowledged_by: acknowledgedBy,
+          acknowledged_at: new Date().toISOString(),
+          acknowledgment_notes: notes,
+        })
+        .eq('id', violationId)
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch {
+      console.warn('spc_rule_violations table not found - cannot acknowledge violation');
+      return null;
+    }
   }
 
   // =====================================================

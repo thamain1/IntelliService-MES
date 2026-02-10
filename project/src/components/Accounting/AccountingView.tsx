@@ -188,7 +188,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     try {
       const { data, error } = await supabase
         .from('journal_entries')
-        .select('*, profiles(full_name)')
+        .select('*')
         .order('entry_date', { ascending: false })
         .limit(50);
 
