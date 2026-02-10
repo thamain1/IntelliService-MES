@@ -696,41 +696,29 @@ export class OEEService {
       return actualHours * 60 * 60; // Return in seconds
     }
 
-    // For multi-day calculations, try to get work center specific hours
-    try {
-      const { data: workCenter } = await supabase
-        .from('work_centers')
-        .select('hours_per_day, days_per_week')
-        .eq('id', workCenterId)
-        .single();
+    // For multi-day calculations, use default shift hours (5-day week)
+    // Note: hours_per_day and days_per_week columns don't exist in work_centers table
+    const hoursPerDay = this.DEFAULT_SHIFT_HOURS;
+    const daysPerWeek = 5; // Default to 5-day work week
 
-      const hoursPerDay = workCenter?.hours_per_day || this.DEFAULT_SHIFT_HOURS;
-      const daysPerWeek = workCenter?.days_per_week || 5;
+    // Calculate working days (excluding weekends)
+    let workingDays = 0;
+    const current = new Date(from);
 
-      // Calculate working days (excluding weekends if 5-day week)
-      let workingDays = 0;
-      const current = new Date(from);
-
-      while (current <= to) {
-        const dayOfWeek = current.getDay();
-        // If 7-day operation, count all days; otherwise skip weekends
-        if (daysPerWeek === 7 || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
-          workingDays++;
-        }
-        current.setDate(current.getDate() + 1);
+    while (current <= to) {
+      const dayOfWeek = current.getDay();
+      // Skip weekends (Saturday = 6, Sunday = 0)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDays++;
       }
-
-      // Ensure at least 1 working day
-      workingDays = Math.max(1, workingDays);
-      const totalHours = workingDays * hoursPerDay;
-
-      return totalHours * 60 * 60; // Return in seconds
-    } catch (_error) {
-      // Fallback to simple calculation
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      const totalHours = diffDays * this.DEFAULT_SHIFT_HOURS;
-      return totalHours * 60 * 60;
+      current.setDate(current.getDate() + 1);
     }
+
+    // Ensure at least 1 working day
+    workingDays = Math.max(1, workingDays);
+    const totalHours = workingDays * hoursPerDay;
+
+    return totalHours * 60 * 60; // Return in seconds
   }
 
   private static async getDowntimeForPeriod(
