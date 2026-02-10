@@ -24,11 +24,7 @@ export function PartInventoryModal({ partId, partName, onClose }: PartInventoryM
     quantity: 0,
   });
 
-  useEffect(() => {
-    loadData();
-  }, [partId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [locationsRes, inventoryRes] = await Promise.all([
         supabase
@@ -45,14 +41,18 @@ export function PartInventoryModal({ partId, partName, onClose }: PartInventoryM
       if (locationsRes.error) throw locationsRes.error;
       if (inventoryRes.error) throw inventoryRes.error;
 
-      setLocations(locationsRes.data || []);
-      setInventory(inventoryRes.data || []);
+      setLocations((locationsRes.data as unknown as StockLocation[]) || []);
+      setInventory((inventoryRes.data as unknown as PartInventory[]) || []);
     } catch (error) {
       console.error('Error loading inventory data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [partId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getQuantityAtLocation = (locationId: string) => {
     const inv = inventory.find((i) => i.stock_location_id === locationId);

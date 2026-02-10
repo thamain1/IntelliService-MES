@@ -3,7 +3,6 @@ import {
   X,
   Check,
   RefreshCw,
-  Save,
   Ban,
   FileText,
   DollarSign,
@@ -18,7 +17,6 @@ import {
   GLEntryForReconciliation,
   BankStatementLine,
   ReconciliationAdjustment,
-  AdjustmentType,
 } from '../../services/ReconciliationService';
 import { BankStatementImport } from './BankStatementImport';
 import { TransactionMatcher } from './TransactionMatcher';
@@ -47,11 +45,7 @@ export function ReconciliationSession({
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
-  useEffect(() => {
-    loadReconciliationData();
-  }, [reconciliationId]);
-
-  const loadReconciliationData = async () => {
+  const loadReconciliationData = useCallback(async () => {
     try {
       setLoading(true);
       const [reconData, glData, bankData, adjData] = await Promise.all([
@@ -71,13 +65,17 @@ export function ReconciliationSession({
         glData.filter((e) => e.reconciliation_id === reconciliationId).map((e) => e.id)
       );
       setSelectedEntries(clearedIds);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading reconciliation:', error);
-      alert('Failed to load reconciliation: ' + error.message);
+      alert('Failed to load reconciliation: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [reconciliationId]);
+
+  useEffect(() => {
+    loadReconciliationData();
+  }, [loadReconciliationData]);
 
   const handleToggleEntry = async (entryId: string) => {
     if (!reconciliation) return;
@@ -102,9 +100,9 @@ export function ReconciliationSession({
 
       // Reload to get updated balances
       await loadReconciliationData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling entry:', error);
-      alert('Failed to update entry: ' + error.message);
+      alert('Failed to update entry: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -133,9 +131,9 @@ export function ReconciliationSession({
       alert('Reconciliation completed successfully!');
       if (onComplete) onComplete();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error completing reconciliation:', error);
-      alert('Failed to complete reconciliation: ' + error.message);
+      alert('Failed to complete reconciliation: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setActionInProgress(null);
     }
@@ -148,9 +146,9 @@ export function ReconciliationSession({
       await ReconciliationService.cancelReconciliation(reconciliationId);
       if (onComplete) onComplete();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelling reconciliation:', error);
-      alert('Failed to cancel reconciliation: ' + error.message);
+      alert('Failed to cancel reconciliation: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setActionInProgress(null);
     }

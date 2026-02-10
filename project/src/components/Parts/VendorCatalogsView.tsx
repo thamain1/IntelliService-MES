@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Package, Search, Filter, Star, DollarSign, Clock, Box } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Package, Search, Star, Clock } from 'lucide-react';
 import { PartsOrderingService, VendorCatalogItem } from '../../services/PartsOrderingService';
 import { supabase } from '../../lib/supabase';
 
@@ -17,12 +17,7 @@ export function VendorCatalogsView() {
   const [selectedVendor, setSelectedVendor] = useState('all');
   const [preferredOnly, setPreferredOnly] = useState(false);
 
-  useEffect(() => {
-    loadVendors();
-    loadCatalogItems();
-  }, [selectedVendor, preferredOnly]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -31,13 +26,13 @@ export function VendorCatalogsView() {
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as unknown as Vendor[]) || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     }
-  };
+  }, []);
 
-  const loadCatalogItems = async () => {
+  const loadCatalogItems = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -52,7 +47,12 @@ export function VendorCatalogsView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedVendor, preferredOnly]);
+
+  useEffect(() => {
+    loadVendors();
+    loadCatalogItems();
+  }, [loadVendors, loadCatalogItems]);
 
   const filteredItems = catalogItems.filter(item => {
     if (!searchTerm) return true;

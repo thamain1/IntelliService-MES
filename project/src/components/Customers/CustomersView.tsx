@@ -596,8 +596,8 @@ export function CustomersView() {
               state: selectedCustomer.state || '',
               zip_code: selectedCustomer.zip_code || '',
               notes: selectedCustomer.notes || '',
-              site_contact_name: (selectedCustomer as any).site_contact_name || '',
-              site_contact_phone: (selectedCustomer as any).site_contact_phone || '',
+              site_contact_name: (selectedCustomer as unknown as Record<string, unknown>).site_contact_name as string || '',
+              site_contact_phone: (selectedCustomer as unknown as Record<string, unknown>).site_contact_phone as string || '',
             });
           }}
           onDelete={async () => {

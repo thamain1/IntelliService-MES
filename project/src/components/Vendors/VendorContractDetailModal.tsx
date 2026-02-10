@@ -82,17 +82,7 @@ export function VendorContractDetailModal({ contract: initialContract, onClose }
     notes: '',
   });
 
-  useEffect(() => {
-    if (activeTab === 'items') {
-      loadContractItems();
-    } else if (activeTab === 'slas') {
-      loadContractSLAs();
-    } else if (activeTab === 'documents') {
-      loadContractDocuments();
-    }
-  }, [activeTab, contract.id]);
-
-  const loadContractItems = async () => {
+  const loadContractItems = useCallback(async () => {
     setLoadingRelated(true);
     try {
       const { data, error } = await supabase
@@ -105,15 +95,15 @@ export function VendorContractDetailModal({ contract: initialContract, onClose }
         .order('created_at');
 
       if (error) throw error;
-      setItems(data || []);
+      setItems((data as unknown as ContractItem[]) || []);
     } catch (error) {
       console.error('Error loading contract items:', error);
     } finally {
       setLoadingRelated(false);
     }
-  };
+  }, [contract.id]);
 
-  const loadContractSLAs = async () => {
+  const loadContractSLAs = useCallback(async () => {
     setLoadingRelated(true);
     try {
       const data = await VendorContractService.getSLAsForContract(contract.id);
@@ -123,64 +113,9 @@ export function VendorContractDetailModal({ contract: initialContract, onClose }
     } finally {
       setLoadingRelated(false);
     }
-  };
+  }, [contract.id]);
 
-  const handleSaveSLA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await VendorContractService.upsertSLA({
-        vendor_contract_id: contract.id,
-        metric: slaFormData.metric as any,
-        metric_description: slaFormData.metric_description || null,
-        target_value: parseFloat(slaFormData.target_value),
-        target_unit: slaFormData.target_unit,
-        breach_threshold: slaFormData.breach_threshold ? parseFloat(slaFormData.breach_threshold) : null,
-        notes: slaFormData.notes || null,
-      });
-
-      setShowNewSLAForm(false);
-      setEditingSLA(null);
-      setSlaFormData({
-        metric: 'on_time_delivery',
-        metric_description: '',
-        target_value: '',
-        target_unit: '%',
-        breach_threshold: '',
-        notes: '',
-      });
-      loadContractSLAs();
-    } catch (error) {
-      console.error('Error saving SLA:', error);
-      alert('Failed to save SLA');
-    }
-  };
-
-  const handleDeleteSLA = async (slaId: string) => {
-    if (!confirm('Are you sure you want to delete this SLA?')) return;
-
-    try {
-      await VendorContractService.deleteSLA(slaId);
-      loadContractSLAs();
-    } catch (error) {
-      console.error('Error deleting SLA:', error);
-      alert('Failed to delete SLA');
-    }
-  };
-
-  const handleEditSLA = (sla: any) => {
-    setEditingSLA(sla);
-    setSlaFormData({
-      metric: sla.metric,
-      metric_description: sla.metric_description || '',
-      target_value: sla.target_value.toString(),
-      target_unit: sla.target_unit,
-      breach_threshold: sla.breach_threshold?.toString() || '',
-      notes: sla.notes || '',
-    });
-    setShowNewSLAForm(true);
-  };
-
-  const loadContractDocuments = async () => {
+  const loadContractDocuments = useCallback(async () => {
     setLoadingRelated(true);
     try {
       const { data, error } = await supabase
@@ -190,13 +125,23 @@ export function VendorContractDetailModal({ contract: initialContract, onClose }
         .order('uploaded_at', { ascending: false });
 
       if (error) throw error;
-      setDocuments(data || []);
+      setDocuments((data as unknown as ContractDocument[]) || []);
     } catch (error) {
       console.error('Error loading contract documents:', error);
     } finally {
       setLoadingRelated(false);
     }
-  };
+  }, [contract.id]);
+
+  useEffect(() => {
+    if (activeTab === 'items') {
+      loadContractItems();
+    } else if (activeTab === 'slas') {
+      loadContractSLAs();
+    } else if (activeTab === 'documents') {
+      loadContractDocuments();
+    }
+  }, [activeTab, loadContractItems, loadContractSLAs, loadContractDocuments]);
 
   const handleSave = async () => {
     setSaving(true);

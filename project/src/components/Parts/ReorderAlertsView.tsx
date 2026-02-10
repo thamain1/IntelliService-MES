@@ -35,13 +35,7 @@ export function ReorderAlertsView() {
   const [selectedVendor, setSelectedVendor] = useState('all');
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => {
-    loadLocations();
-    loadVendors();
-    loadAlerts();
-  }, [selectedLocation, selectedVendor, filterType]);
-
-  const loadLocations = async () => {
+  const loadLocations = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('stock_locations')
@@ -50,13 +44,13 @@ export function ReorderAlertsView() {
         .order('name');
 
       if (error) throw error;
-      setLocations(data || []);
+      setLocations((data as unknown as Location[]) || []);
     } catch (error) {
       console.error('Error loading locations:', error);
     }
-  };
+  }, []);
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -65,17 +59,23 @@ export function ReorderAlertsView() {
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as unknown as Vendor[]) || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     }
-  };
+  }, []);
 
-  const loadAlerts = async () => {
+  const loadAlerts = useCallback(async () => {
     try {
       setLoading(true);
 
-      const params: any = {
+      const params: {
+        locationId?: string;
+        vendorId?: string;
+        criticalOnly?: boolean;
+        belowRopOnly?: boolean;
+        stockoutsOnly?: boolean;
+      } = {
         locationId: selectedLocation !== 'all' ? selectedLocation : undefined,
         vendorId: selectedVendor !== 'all' ? selectedVendor : undefined,
       };
@@ -95,7 +95,13 @@ export function ReorderAlertsView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedLocation, selectedVendor, filterType]);
+
+  useEffect(() => {
+    loadLocations();
+    loadVendors();
+    loadAlerts();
+  }, [loadLocations, loadVendors, loadAlerts]);
 
   const createPOFromAlert = async (alert: ReorderAlert) => {
     if (!alert.vendorId) {
@@ -106,7 +112,7 @@ export function ReorderAlertsView() {
     try {
       setCreatingPO(`${alert.partId}-${alert.locationId}`);
 
-      const { data, error } = await supabase.rpc('fn_create_po_from_alert', {
+      const { error } = await supabase.rpc('fn_create_po_from_alert', {
         p_part_id: alert.partId,
         p_location_id: alert.locationId,
         p_quantity: Math.ceil(alert.suggestedOrderQty),
@@ -119,9 +125,9 @@ export function ReorderAlertsView() {
 
       // Refresh alerts
       loadAlerts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating PO:', error);
-      alert(error.message || 'Failed to create PO');
+      alert((error as { message?: string })?.message || 'Failed to create PO');
     } finally {
       setCreatingPO(null);
     }
@@ -164,9 +170,9 @@ export function ReorderAlertsView() {
 
       // Refresh alerts
       loadAlerts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating POs:', error);
-      alert(error.message || 'Failed to generate POs');
+      alert((error as { message?: string })?.message || 'Failed to generate POs');
     } finally {
       setGeneratingAll(false);
     }

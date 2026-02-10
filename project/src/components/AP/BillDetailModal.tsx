@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   X,
   FileText,
@@ -15,7 +15,6 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
-  LucideIcon,
 } from 'lucide-react';
 import { APService, Bill, BillLineItem, BillStatus } from '../../services/APService';
 import { supabase } from '../../lib/supabase';
@@ -70,15 +69,7 @@ export function BillDetailModal({
   const [editTaxAmount, setEditTaxAmount] = useState('0');
   const [editLineItems, setEditLineItems] = useState<BillLineItem[]>([]);
 
-  useEffect(() => {
-    if (isOpen && bill) {
-      loadBillDetails();
-      loadAccounts();
-      loadPaymentHistory();
-    }
-  }, [isOpen, bill?.id]);
-
-  const loadBillDetails = async () => {
+  const loadBillDetails = useCallback(async () => {
     if (!bill) return;
 
     try {
@@ -95,9 +86,9 @@ export function BillDetailModal({
     } catch (err) {
       console.error('Failed to load bill details:', err);
     }
-  };
+  }, [bill]);
 
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('chart_of_accounts')
@@ -105,13 +96,13 @@ export function BillDetailModal({
         .eq('is_active', true)
         .in('account_type', ['expense', 'asset'])
         .order('account_code');
-      setAccounts(data || []);
+      setAccounts((data as unknown as Account[]) || []);
     } catch (err) {
       console.error('Failed to load accounts:', err);
     }
-  };
+  }, []);
 
-  const loadPaymentHistory = async () => {
+  const loadPaymentHistory = useCallback(async () => {
     if (!bill) return;
 
     try {
@@ -123,11 +114,19 @@ export function BillDetailModal({
         `)
         .eq('bill_id', bill.id);
 
-      setPaymentHistory(data || []);
+      setPaymentHistory((data as unknown as PaymentHistoryItem[]) || []);
     } catch (err) {
       console.error('Failed to load payment history:', err);
     }
-  };
+  }, [bill]);
+
+  useEffect(() => {
+    if (isOpen && bill) {
+      loadBillDetails();
+      loadAccounts();
+      loadPaymentHistory();
+    }
+  }, [isOpen, bill, loadBillDetails, loadAccounts, loadPaymentHistory]);
 
   const handleSave = async () => {
     if (!bill) return;

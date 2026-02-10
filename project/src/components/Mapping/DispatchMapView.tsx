@@ -53,7 +53,7 @@ export function DispatchMapView() {
   const [optimizing, setOptimizing] = useState(false);
   const [routeSavings, setRouteSavings] = useState<{ distanceSaved: number; timeSaved: number } | null>(null);
 
-  const { technicians, loading: techLoading, error: techError, refresh: refreshTechs } = useTechnicianLocations();
+  const { technicians, loading: techLoading, error: _techError, refresh: refreshTechs } = useTechnicianLocations();
 
   useEffect(() => {
     loadTickets();
@@ -154,9 +154,9 @@ export function DispatchMapView() {
       } else {
         alert(`Route optimization failed: ${result.error}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[DispatchMapView] Route optimization error:', error);
-      alert(`Route optimization failed: ${error.message}`);
+      alert(`Route optimization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setOptimizing(false);
     }

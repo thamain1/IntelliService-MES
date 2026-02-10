@@ -1,6 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
+import { InvoiceLineItemRow } from '../lib/dbTypes';
+
+// Type for jsPDF extended with autoTable's lastAutoTable property
+interface jsPDFWithAutoTable extends jsPDF {
+  lastAutoTable: {
+    finalY: number;
+  };
+}
 
 export interface InvoiceEmailData {
   invoiceId: string;
@@ -91,7 +99,7 @@ export class InvoiceEmailService {
     });
 
     // Totals
-    const finalY = (doc as any).lastAutoTable.finalY || 80;
+    const finalY = (doc as unknown as jsPDFWithAutoTable).lastAutoTable.finalY || 80;
 
     doc.setFontSize(10);
     const totalsX = pageWidth - 70;
@@ -199,7 +207,7 @@ Your Company`,
       }
 
       throw new Error(result?.error || 'Failed to send email');
-    } catch (error) {
+    } catch (_error) {
       // Edge function not available or failed, use mailto fallback
       console.log('Edge function not available, falling back to mailto');
       return this.openMailtoLink(data, composition);
@@ -210,7 +218,7 @@ Your Company`,
    * Open mailto link as fallback
    */
   static openMailtoLink(
-    data: InvoiceEmailData,
+    _data: InvoiceEmailData,
     composition: EmailComposition
   ): { success: boolean; message: string; method: 'mailto' } {
     const mailtoLink = `mailto:${encodeURIComponent(composition.to)}?subject=${encodeURIComponent(
@@ -278,13 +286,19 @@ Your Company`,
         customerEmail: customer?.email || '',
         totalAmount: invoice.total_amount,
         dueDate: invoice.due_date,
-        lineItems: lineItems || [],
+        lineItems: (lineItems || []).map((item: InvoiceLineItemRow) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          taxable: item.taxable ?? false,
+        })),
         subtotal: invoice.subtotal,
         taxRate: invoice.tax_rate,
         taxAmount: invoice.tax_amount,
         discountAmount: invoice.discount_amount,
         balanceDue: invoice.balance_due,
-        customerNotes: invoice.customer_notes,
+        customerNotes: invoice.customer_notes ?? undefined,
       };
     } catch (error) {
       console.error('Error loading invoice email data:', error);

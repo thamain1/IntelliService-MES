@@ -1,16 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  DollarSign,
   Calendar,
-  Phone,
   User,
-  ChevronRight,
   GripVertical,
   Clock,
   AlertCircle,
-  Plus,
-  Filter,
-  MoreVertical,
   Eye,
   X,
 } from 'lucide-react';
@@ -27,11 +21,7 @@ export function SalesPipeline({ onRefresh }: SalesPipelineProps) {
   const [draggedItem, setDraggedItem] = useState<SalesPipelineItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<SalesPipelineItem | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [defaultPipeline, pipelineItems] = await Promise.all([
@@ -46,7 +36,11 @@ export function SalesPipeline({ onRefresh }: SalesPipelineProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleDragStart = (e: React.DragEvent, item: SalesPipelineItem) => {
     setDraggedItem(item);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, Clock, Search, Calendar, MapPin, Package, Plus, FileText, DollarSign } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Clock, Search, Calendar, MapPin, Package, Plus, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { WarrantyService, type WarrantyClaimSummary } from '../../services/WarrantyService';
 import { WarrantyClaimModal } from './WarrantyClaimModal';

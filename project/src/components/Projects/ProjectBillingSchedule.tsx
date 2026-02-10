@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, CheckCircle, Clock, Plus, FileText, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,17 +38,11 @@ export function ProjectBillingSchedule({ projectId, contractValue, customerId }:
   const { profile } = useAuth();
   const [schedules, setSchedules] = useState<BillingSchedule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNewModal, setShowNewModal] = useState(false);
+  const [, setShowNewModal] = useState(false);
   const [billingMilestone, setBillingMilestone] = useState<BillingSchedule | null>(null);
-  const [billingInProgress, setBillingInProgress] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
 
-  useEffect(() => {
-    loadBillingSchedules();
-    loadProject();
-  }, [projectId]);
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('projects')
@@ -61,9 +55,9 @@ export function ProjectBillingSchedule({ projectId, contractValue, customerId }:
     } catch (error) {
       console.error('Error loading project:', error);
     }
-  };
+  }, [projectId]);
 
-  const loadBillingSchedules = async () => {
+  const loadBillingSchedules = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('project_billing_schedules')
@@ -72,13 +66,18 @@ export function ProjectBillingSchedule({ projectId, contractValue, customerId }:
         .order('sequence');
 
       if (error) throw error;
-      setSchedules(data || []);
+      setSchedules((data as unknown as BillingSchedule[]) || []);
     } catch (error) {
       console.error('Error loading billing schedules:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadBillingSchedules();
+    loadProject();
+  }, [loadBillingSchedules, loadProject]);
 
   const calculateAmount = (schedule: BillingSchedule): number => {
     if (schedule.billing_type === 'fixed_amount' && schedule.amount) {
@@ -126,7 +125,7 @@ export function ProjectBillingSchedule({ projectId, contractValue, customerId }:
   };
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { className: string; icon: any }> = {
+    const badges: Record<string, { className: string; icon: React.ComponentType<{ className?: string }> }> = {
       planned: { className: 'badge badge-gray', icon: Clock },
       ready_to_bill: { className: 'badge badge-blue', icon: AlertTriangle },
       billed: { className: 'badge badge-green', icon: CheckCircle },
@@ -395,18 +394,18 @@ function BillMilestoneModal({
   const [loading, setLoading] = useState(false);
   const [validation, setValidation] = useState<{ valid: boolean; errors: string[]; warnings: string[] } | null>(null);
 
-  useEffect(() => {
-    validateMilestone();
-  }, [milestone.id]);
-
-  const validateMilestone = async () => {
+  const validateMilestone = useCallback(async () => {
     try {
       const result = await MilestoneInvoiceService.validateMilestoneForBilling(milestone.id);
       setValidation(result);
     } catch (error) {
       console.error('Error validating milestone:', error);
     }
-  };
+  }, [milestone.id]);
+
+  useEffect(() => {
+    validateMilestone();
+  }, [validateMilestone]);
 
   const calculateAmount = (): number => {
     if (milestone.billing_type === 'fixed_amount' && milestone.amount) {
@@ -439,9 +438,10 @@ function BillMilestoneModal({
 
       alert(`Invoice ${invoice.invoice_number} created successfully!`);
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating invoice:', error);
-      alert(`Failed to create invoice: ${error.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to create invoice: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

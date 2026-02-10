@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Mail, Phone, Shield, CheckCircle, XCircle, DollarSign, Edit2 } from 'lucide-react';
+import { Plus, X, Mail, Phone, CheckCircle, XCircle, DollarSign, Edit2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 
@@ -103,9 +103,9 @@ export function UserManagement() {
         setSuccessMessage('');
         loadUsers();
       }, 1500);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding user:', error);
-      setErrorMessage(error.message || 'Failed to add user. Please try again.');
+      setErrorMessage((error as Error).message || 'Failed to add user. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -217,9 +217,9 @@ export function UserManagement() {
       setShowEditModal(false);
       setEditingUser(null);
       loadUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating user:', error);
-      alert(error.message || 'Failed to update user. Please try again.');
+      alert((error as Error).message || 'Failed to update user. Please try again.');
     }
   };
 

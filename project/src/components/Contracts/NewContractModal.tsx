@@ -28,7 +28,7 @@ export function NewContractModal({ onClose, preselectedCustomerId }: NewContract
     end_date: '',
     auto_renew: true,
     base_fee: '0',
-    status: 'draft' as const,
+    status: 'draft' as Database['public']['Enums']['service_contract_status'],
   });
 
   useEffect(() => {
@@ -139,9 +139,9 @@ export function NewContractModal({ onClose, preselectedCustomerId }: NewContract
 
       alert('Contract created successfully!');
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating contract:', error);
-      alert(`Failed to create contract: ${error.message}`);
+      alert(`Failed to create contract: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -298,7 +298,7 @@ export function NewContractModal({ onClose, preselectedCustomerId }: NewContract
               </label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as unknown as Database['public']['Enums']['service_contract_status'] })}
                 className="input"
               >
                 <option value="draft">Draft</option>

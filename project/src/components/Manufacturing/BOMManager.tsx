@@ -5,7 +5,6 @@ import {
   Package,
   MapPin,
   CheckCircle,
-  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ManufacturingService, BOMItem, CreateBOMItemInput } from '../../services/ManufacturingService';
@@ -43,23 +42,23 @@ export function BOMManager({ orderId, items, orderStatus, onUpdate }: BOMManager
     notes: '',
   });
 
-  useEffect(() => {
-    loadFormData();
-  }, []);
-
-  const loadFormData = async () => {
+  const loadFormData = useCallback(async () => {
     try {
       const [partsRes, locationsRes] = await Promise.all([
         supabase.from('parts').select('id, name, part_number').order('name'),
         supabase.from('stock_locations').select('id, name').eq('is_active', true).order('name'),
       ]);
 
-      setParts(partsRes.data || []);
-      setLocations(locationsRes.data || []);
+      setParts((partsRes.data as unknown as Part[]) || []);
+      setLocations((locationsRes.data as unknown as StockLocation[]) || []);
     } catch (error) {
       console.error('Error loading form data:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadFormData();
+  }, [loadFormData]);
 
   const handleAddItem = async () => {
     if (!newItem.part_id) return;

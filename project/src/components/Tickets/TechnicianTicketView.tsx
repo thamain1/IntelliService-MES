@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Camera, Package, MessageSquare, CheckCircle, Clock, AlertTriangle, MapPin, Phone, User, Plus, X, History, Eye, AlertOctagon, PackageX, Navigation } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Camera, Package, MessageSquare, CheckCircle, Clock, AlertTriangle, MapPin, Phone, User, Plus, X, History, Eye, PackageX } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { holdTicketForParts, reportTicketIssue } from '../../services/TicketHoldService';
@@ -35,6 +35,10 @@ type Ticket = {
   hold_parts_active?: boolean;
   hold_issue_active?: boolean;
   revisit_required?: boolean;
+  assigned_to?: string;
+  completed_date?: string;
+  site_contact_name?: string | null;
+  site_contact_phone?: string | null;
   customers: {
     name: string;
     phone: string;
@@ -153,36 +157,7 @@ export function TechnicianTicketView() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    loadMyTickets();
-    loadCompletedTickets();
-    checkActiveTimer();
-    checkShiftClockIn();
-    loadStandardCodes();
-  }, [profile?.id]);
-
-  useEffect(() => {
-    if (selectedTicket) {
-      console.log('Selected ticket changed, loading details for:', selectedTicket.id);
-      loadTicketDetails(selectedTicket.id);
-      loadOnSiteProgress(selectedTicket.id);
-      // Re-check shift clock-in status when viewing a ticket
-      checkShiftClockIn();
-    } else {
-      console.log('No ticket selected');
-      setOnSiteProgress(null);
-    }
-  }, [selectedTicket]);
-
-  useEffect(() => {
-    if (!selectedTicket || viewMode === 'readonly') return;
-    const interval = setInterval(() => {
-      loadOnSiteProgress(selectedTicket.id);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [selectedTicket, viewMode]);
-
-  const checkActiveTimer = async () => {
+  const checkActiveTimer = useCallback(async () => {
     if (!profile?.id) return;
     try {
       const { data, error } = await supabase.rpc('fn_get_active_timer', { p_tech_id: profile.id });
@@ -191,9 +166,9 @@ export function TechnicianTicketView() {
     } catch (error) {
       console.error('Error checking active timer:', error);
     }
-  };
+  }, [profile]);
 
-  const checkShiftClockIn = async () => {
+  const checkShiftClockIn = useCallback(async () => {
     if (!profile?.id) return;
     try {
       // Check if the technician has an active shift clock-in (not a ticket timer)
@@ -212,9 +187,9 @@ export function TechnicianTicketView() {
       console.error('Error checking shift clock-in:', error);
       setIsShiftClockedIn(false);
     }
-  };
+  }, [profile]);
 
-  const loadStandardCodes = async () => {
+  const loadStandardCodes = useCallback(async () => {
     try {
       const [problemRes, resolutionRes] = await Promise.all([
         supabase
@@ -236,9 +211,9 @@ export function TechnicianTicketView() {
     } catch (error) {
       console.error('Error loading standard codes:', error);
     }
-  };
+  }, []);
 
-  const loadOnSiteProgress = async (ticketId: string) => {
+  const loadOnSiteProgress = useCallback(async (ticketId: string) => {
     try {
       const { data, error } = await supabase
         .from('vw_ticket_onsite_progress')
@@ -252,9 +227,9 @@ export function TechnicianTicketView() {
     } catch (error) {
       console.error('Error loading onsite progress:', error);
     }
-  };
+  }, []);
 
-  const loadCompletedTickets = async () => {
+  const loadCompletedTickets = useCallback(async () => {
     if (!profile?.id) return;
     try {
       const { data, error } = await supabase
@@ -265,13 +240,13 @@ export function TechnicianTicketView() {
         .order('completed_date', { ascending: false })
         .limit(20);
       if (error) throw error;
-      setCompletedTickets(data || []);
+      setCompletedTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading completed tickets:', error);
     }
-  };
+  }, [profile]);
 
-  const loadMyTickets = async () => {
+  const loadMyTickets = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
@@ -282,56 +257,18 @@ export function TechnicianTicketView() {
 
       if (error) throw error;
       console.log('Loaded tickets:', data?.length || 0);
-      setTickets(data || []);
+      setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading tickets:', error);
       alert('Error loading tickets: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile]);
 
-  const loadTicketDetails = async (ticketId: string) => {
-    console.log('Loading ticket details for:', ticketId);
-    try {
-      const [updatesRes, photosRes, partsRes] = await Promise.all([
-        supabase
-          .from('ticket_updates')
-          .select('*, profiles(full_name)')
-          .eq('ticket_id', ticketId)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('ticket_photos')
-          .select('*')
-          .eq('ticket_id', ticketId)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('ticket_parts_used')
-          .select('*, parts(part_number, name, unit_price)')
-          .eq('ticket_id', ticketId)
-          .order('created_at', { ascending: false }),
-      ]);
-
-      if (updatesRes.error) throw updatesRes.error;
-      if (photosRes.error) throw photosRes.error;
-      if (partsRes.error) throw partsRes.error;
-
-      setUpdates(updatesRes.data || []);
-      setPhotos(photosRes.data || []);
-      setPartsUsed(partsRes.data || []);
-
-      if (viewMode !== 'readonly') {
-        await loadTruckInventory();
-      }
-    } catch (error) {
-      console.error('Error loading ticket details:', error);
-      alert('Error loading ticket details: ' + (error as Error).message);
-    }
-  };
-
-  const loadTruckInventory = async () => {
+  const loadTruckInventory = useCallback(async (ticketAssignedToId: string | undefined) => {
     // Use assigned technician's ID if available, otherwise use logged-in user's ID
-    const technicianId = selectedTicket?.assigned_to || profile?.id;
+    const technicianId = ticketAssignedToId || profile?.id;
     if (!technicianId) return;
     try {
       const { data: truckParts, error: truckError } = await supabase
@@ -362,7 +299,74 @@ export function TechnicianTicketView() {
       console.error('Error loading truck inventory:', error);
       setAvailableParts([]);
     }
-  };
+  }, [profile]);
+
+  const loadTicketDetails = useCallback(async (ticketId: string, ticketAssignedToId: string | undefined, currentViewMode: string) => {
+    console.log('Loading ticket details for:', ticketId);
+    try {
+      const [updatesRes, photosRes, partsRes] = await Promise.all([
+        supabase
+          .from('ticket_updates')
+          .select('*, profiles(full_name)')
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('ticket_photos')
+          .select('*')
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('ticket_parts_used')
+          .select('*, parts(part_number, name, unit_price)')
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (updatesRes.error) throw updatesRes.error;
+      if (photosRes.error) throw photosRes.error;
+      if (partsRes.error) throw partsRes.error;
+
+      setUpdates((updatesRes.data as unknown as TicketUpdate[]) || []);
+      setPhotos((photosRes.data as unknown as TicketPhoto[]) || []);
+      setPartsUsed((partsRes.data as unknown as PartUsed[]) || []);
+
+      if (currentViewMode !== 'readonly') {
+        await loadTruckInventory(ticketAssignedToId);
+      }
+    } catch (error) {
+      console.error('Error loading ticket details:', error);
+      alert('Error loading ticket details: ' + (error as Error).message);
+    }
+  }, [loadTruckInventory]);
+
+  useEffect(() => {
+    loadMyTickets();
+    loadCompletedTickets();
+    checkActiveTimer();
+    checkShiftClockIn();
+    loadStandardCodes();
+  }, [loadMyTickets, loadCompletedTickets, checkActiveTimer, checkShiftClockIn, loadStandardCodes]);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      console.log('Selected ticket changed, loading details for:', selectedTicket.id);
+      loadTicketDetails(selectedTicket.id, selectedTicket.assigned_to, viewMode);
+      loadOnSiteProgress(selectedTicket.id);
+      // Re-check shift clock-in status when viewing a ticket
+      checkShiftClockIn();
+    } else {
+      console.log('No ticket selected');
+      setOnSiteProgress(null);
+    }
+  }, [selectedTicket, viewMode, loadTicketDetails, loadOnSiteProgress, checkShiftClockIn]);
+
+  useEffect(() => {
+    if (!selectedTicket || viewMode === 'readonly') return;
+    const interval = setInterval(() => {
+      loadOnSiteProgress(selectedTicket.id);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [selectedTicket, viewMode, loadOnSiteProgress]);
 
   const loadAllParts = async () => {
     try {
@@ -606,7 +610,7 @@ export function TechnicianTicketView() {
       }
 
       if (updateFormData.status) {
-        const ticketUpdateData: any = {
+        const ticketUpdateData: Record<string, unknown> = {
           status: updateFormData.status,
           updated_at: new Date().toISOString(),
           assigned_to: selectedTicket.assigned_to
@@ -667,7 +671,7 @@ export function TechnicianTicketView() {
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = (error as any).message;
+        errorMessage = (error as unknown as { message: string }).message;
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
@@ -774,9 +778,9 @@ export function TechnicianTicketView() {
       });
       setSelectedFile(null);
       alert('Photo uploaded successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading photo:', error);
-      const errorMessage = error?.message || 'Unknown error occurred';
+      const errorMessage = (error as { message?: string })?.message || 'Unknown error occurred';
       alert(`Failed to upload photo: ${errorMessage}`);
     } finally {
       setUploadingPhoto(false);
@@ -1135,20 +1139,20 @@ export function TechnicianTicketView() {
                     </p>
                   </div>
                 </div>
-                {((selectedTicket as any).site_contact_name || (selectedTicket as any).site_contact_phone) && (
+                {(selectedTicket.site_contact_name || selectedTicket.site_contact_phone) && (
                   <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">Site Contact</p>
-                    {(selectedTicket as any).site_contact_name && (
+                    {selectedTicket.site_contact_name && (
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {(selectedTicket as any).site_contact_name}
+                        {selectedTicket.site_contact_name}
                       </p>
                     )}
-                    {(selectedTicket as any).site_contact_phone && (
+                    {selectedTicket.site_contact_phone && (
                       <a
-                        href={`tel:${(selectedTicket as any).site_contact_phone}`}
+                        href={`tel:${selectedTicket.site_contact_phone}`}
                         className="text-blue-600 hover:underline font-medium"
                       >
-                        {(selectedTicket as any).site_contact_phone}
+                        {selectedTicket.site_contact_phone}
                       </a>
                     )}
                   </div>
@@ -1317,7 +1321,7 @@ export function TechnicianTicketView() {
                   <select
                     required
                     value={updateFormData.update_type}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, update_type: e.target.value as any })}
+                    onChange={(e) => setUpdateFormData({ ...updateFormData, update_type: e.target.value as 'progress_note' | 'arrived' | 'needs_parts' | 'issue' | 'completed' })}
                     className="input"
                   >
                     <option value="progress_note">Progress Note</option>
@@ -1572,7 +1576,7 @@ export function TechnicianTicketView() {
                   <select
                     required
                     value={photoFormData.photo_type}
-                    onChange={(e) => setPhotoFormData({ ...photoFormData, photo_type: e.target.value as any })}
+                    onChange={(e) => setPhotoFormData({ ...photoFormData, photo_type: e.target.value as 'before' | 'during' | 'after' | 'issue' | 'equipment' | 'other' })}
                     className="input"
                   >
                     <option value="before">Before</option>
@@ -1706,7 +1710,7 @@ export function TechnicianTicketView() {
                   <select
                     required
                     value={needPartsFormData.urgency}
-                    onChange={(e) => setNeedPartsFormData({ ...needPartsFormData, urgency: e.target.value as any })}
+                    onChange={(e) => setNeedPartsFormData({ ...needPartsFormData, urgency: e.target.value as 'low' | 'medium' | 'high' | 'critical' })}
                     className="input"
                   >
                     <option value="low">Low - Can wait a few days</option>
@@ -1867,7 +1871,7 @@ export function TechnicianTicketView() {
                   return;
                 }
 
-                let ticket = tickets.find(t => t.id === activeTimer.ticket_id);
+                  const ticket = tickets.find(t => t.id === activeTimer.ticket_id);
                 if (ticket) {
                   setSelectedTicket(ticket);
                   setViewMode('edit');
@@ -1889,14 +1893,15 @@ export function TechnicianTicketView() {
                       return;
                     }
                     if (data) {
-                      setSelectedTicket(data as Ticket);
+                      setSelectedTicket(data as unknown as Ticket);
                       setViewMode('edit');
                     } else {
                       alert('Ticket not found in database.');
                     }
-                  } catch (error: any) {
-                    console.error('Error fetching ticket:', error);
-                    alert(`Could not load ticket: ${error?.message || 'Unknown error'}`);
+                  } catch (err: unknown) {
+                    console.error('Error fetching ticket:', err);
+                    const errorMessage = (err as Error)?.message || 'Unknown error';
+                    alert(`Could not load ticket: ${errorMessage}`);
                   }
                 }
               }}

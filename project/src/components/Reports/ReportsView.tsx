@@ -56,11 +56,7 @@ export function ReportsView() {
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [showExportMenu, setShowExportMenu] = useState(false);
 
-  useEffect(() => {
-    loadMetrics();
-  }, [dateRange]);
-
-  const getDateRange = () => {
+  const getDateRange = useCallback(() => {
     const now = new Date();
     const ranges = {
       week: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
@@ -69,9 +65,9 @@ export function ReportsView() {
       year: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
     };
     return ranges[dateRange];
-  };
+  }, [dateRange]);
 
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     try {
       const startDate = getDateRange();
 
@@ -100,7 +96,7 @@ export function ReportsView() {
         .gte('created_at', startDate.toISOString());
 
       const partCounts: Record<string, { name: string; count: number }> = {};
-      partsUsage?.forEach((usage: any) => {
+      partsUsage?.forEach((usage: { part_id: string; parts: { name: string } | null; quantity_used: number }) => {
         const partId = usage.part_id;
         const partName = usage.parts?.name || 'Unknown';
         if (!partCounts[partId]) {
@@ -118,7 +114,7 @@ export function ReportsView() {
         .not('assigned_to', 'is', null);
 
       const techCounts: Record<string, { name: string; count: number }> = {};
-      technicianStats?.forEach((ticket: any) => {
+      technicianStats?.forEach((ticket: { assigned_to: string; profiles: { full_name: string } | null }) => {
         const techId = ticket.assigned_to;
         const techName = ticket.profiles?.full_name || 'Unknown';
         if (!techCounts[techId]) {
@@ -142,14 +138,14 @@ export function ReportsView() {
 
       // Compute daily breakdown for chart
       const dailyMap = new Map<string, { tickets: number; completed: number }>();
-      ticketsData?.forEach((ticket: any) => {
-        const date = new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const existing = dailyMap.get(date) || { tickets: 0, completed: 0 };
+      ticketsData?.forEach((ticket: { created_at: string; status: string }) => {
+        const dateString = new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const existing = dailyMap.get(dateString) || { tickets: 0, completed: 0 };
         existing.tickets += 1;
         if (ticket.status === 'completed') {
           existing.completed += 1;
         }
-        dailyMap.set(date, existing);
+        dailyMap.set(dateString, existing);
       });
 
       const dailyChartData: DailyData[] = Array.from(dailyMap.entries())
@@ -163,7 +159,7 @@ export function ReportsView() {
 
       // Compute status breakdown for pie chart
       const statusCounts: Record<string, number> = {};
-      ticketsData?.forEach((ticket: any) => {
+      ticketsData?.forEach((ticket: { status: string }) => {
         const status = ticket.status || 'unknown';
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       });
@@ -189,7 +185,11 @@ export function ReportsView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getDateRange]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const getExportData = useCallback((): ExportData => {
     const startDate = getDateRange();
@@ -215,7 +215,7 @@ export function ReportsView() {
         generated_at: new Date().toISOString(),
       },
     };
-  }, [metrics, dateRange]);
+  }, [metrics, dateRange, getDateRange]);
 
   const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
     const data = getExportData();

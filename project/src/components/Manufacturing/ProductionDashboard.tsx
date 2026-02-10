@@ -32,7 +32,7 @@ interface ProductionDashboardProps {
 // Auto-refresh interval in milliseconds (30 seconds)
 const AUTO_REFRESH_INTERVAL = 30000;
 
-export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: ProductionDashboardProps) {
+export function ProductionDashboard({ initialView = 'dashboard', onNavigate: _onNavigate }: ProductionDashboardProps) {
   const { profile } = useAuth();
   const [view, setView] = useState<'dashboard' | 'work-centers'>(initialView);
   const [orders, setOrders] = useState<ProductionDashboardItem[]>([]);
@@ -50,24 +50,7 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // M2: Include searchTerm in dependencies (via debounce pattern)
-  useEffect(() => {
-    loadData();
-  }, [statusFilter, priorityFilter]);
-
-  // M5: Auto-refresh dashboard data
-  useEffect(() => {
-    const timer = setInterval(() => {
-      // Only auto-refresh if not in detail view and not showing modal
-      if (!selectedOrderId && !showCreateModal) {
-        loadData();
-      }
-    }, AUTO_REFRESH_INTERVAL);
-
-    return () => clearInterval(timer);
-  }, [selectedOrderId, showCreateModal, statusFilter, priorityFilter, searchTerm]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null); // M4: Clear error on reload
     try {
@@ -84,13 +67,30 @@ export function ProductionDashboard({ initialView = 'dashboard', onNavigate }: P
 
       setOrders(ordersData);
       setStats(statsData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading production data:', err);
-      setError(err.message || 'Failed to load production data'); // M4: Set error
+      setError((err as Error).message || 'Failed to load production data'); // M4: Set error
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, statusFilter, priorityFilter]);
+
+  // M2: Include searchTerm in dependencies (via debounce pattern)
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // M5: Auto-refresh dashboard data
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Only auto-refresh if not in detail view and not showing modal
+      if (!selectedOrderId && !showCreateModal) {
+        loadData();
+      }
+    }, AUTO_REFRESH_INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [selectedOrderId, showCreateModal, loadData]);
 
   const handleSearch = () => {
     loadData();

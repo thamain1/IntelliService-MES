@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import type { Database } from '../../lib/database.types';
+
+type VendorContractSla = Database['public']['Tables']['vendor_contract_slas']['Row'];
+
+interface VendorContractSlaWithContract extends VendorContractSla {
+  vendor_contracts: {
+    vendor_id: string;
+    status: string;
+  };
+}
 
 interface PerformanceMetric {
   metric: string;
@@ -12,6 +22,14 @@ interface PerformanceMetric {
   status: 'good' | 'warning' | 'critical' | 'unknown';
 }
 
+interface VendorSummary {
+  id: string;
+  display_name: string;
+  vendor_code: string;
+  rating: number | null;
+  status: string;
+}
+
 interface VendorPerformanceViewProps {
   vendorId?: string;
 }
@@ -19,27 +37,9 @@ interface VendorPerformanceViewProps {
 export function VendorPerformanceView({ vendorId }: VendorPerformanceViewProps) {
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
-  const [vendors, setVendors] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<VendorSummary[]>([]);
 
-  useEffect(() => {
-    loadPerformanceData();
-  }, [vendorId]);
-
-  const loadPerformanceData = async () => {
-    try {
-      if (vendorId) {
-        await loadVendorPerformance(vendorId);
-      } else {
-        await loadAllVendorsPerformance();
-      }
-    } catch (error) {
-      console.error('Error loading performance data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadVendorPerformance = async (id: string) => {
+  const loadVendorPerformance = useCallback(async (id: string) => {
     const { data: slas } = await supabase
       .from('vendor_contract_slas')
       .select(`
@@ -52,7 +52,7 @@ export function VendorPerformanceView({ vendorId }: VendorPerformanceViewProps) 
     const performanceMetrics: PerformanceMetric[] = [];
 
     if (slas && slas.length > 0) {
-      slas.forEach((sla: any) => {
+      (slas as unknown as VendorContractSlaWithContract[]).forEach((sla) => {
         performanceMetrics.push({
           metric: sla.metric,
           metricLabel: formatMetricLabel(sla.metric),
@@ -96,17 +96,35 @@ export function VendorPerformanceView({ vendorId }: VendorPerformanceViewProps) 
     }
 
     setMetrics(performanceMetrics);
-  };
+  }, []);
 
-  const loadAllVendorsPerformance = async () => {
+  const loadAllVendorsPerformance = useCallback(async () => {
     const { data } = await supabase
       .from('vendors')
       .select('id, display_name, vendor_code, rating, status')
       .eq('status', 'active')
       .order('display_name');
 
-    setVendors(data || []);
-  };
+    setVendors((data as unknown as VendorSummary[]) || []);
+  }, []);
+
+  const loadPerformanceData = useCallback(async () => {
+    try {
+      if (vendorId) {
+        await loadVendorPerformance(vendorId);
+      } else {
+        await loadAllVendorsPerformance();
+      }
+    } catch (error) {
+      console.error('Error loading performance data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [vendorId, loadVendorPerformance, loadAllVendorsPerformance]);
+
+  useEffect(() => {
+    loadPerformanceData();
+  }, [loadPerformanceData]);
 
   const formatMetricLabel = (metric: string): string => {
     return metric

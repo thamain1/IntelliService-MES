@@ -1,7 +1,55 @@
 import { supabase } from '../lib/supabase';
+import type { Enums, Tables } from '../lib/dbTypes';
+
+// Composite types for Supabase joins
+type ProjectWithCustomer = Tables<'projects'> & {
+  customers: { name: string } | null;
+};
+
+type TicketWithRelations = Tables<'tickets'> & {
+  customers: { name: string } | null;
+  customer_locations: { location_name: string } | null;
+};
+
+type TicketWithProfile = Tables<'tickets'> & {
+  profiles: { labor_cost_per_hour: number | null } | null;
+};
+
+type PartUsageWithParts = {
+  quantity: number | null;
+  created_at: string | null;
+  part_id: string;
+  parts: {
+    id: string;
+    unit_price: number | null;
+    part_inventory: { unit_cost: number | null }[];
+  } | null;
+};
 
 export type JobType = 'project' | 'ticket' | 'both';
 export type JobStatus = 'all' | 'open' | 'in_progress' | 'completed' | 'closed';
+
+// Map generic JobStatus to actual project statuses
+function mapToProjectStatus(status: JobStatus): Enums<'project_status'> | null {
+  switch (status) {
+    case 'open': return 'planning'; // Map 'open' to 'planning' for projects
+    case 'in_progress': return 'in_progress';
+    case 'completed': return 'completed';
+    case 'closed': return 'completed'; // Map 'closed' to 'completed' for projects
+    default: return null;
+  }
+}
+
+// Map generic JobStatus to actual ticket statuses
+function mapToTicketStatus(status: JobStatus): Enums<'ticket_status'> | null {
+  switch (status) {
+    case 'open': return 'open';
+    case 'in_progress': return 'in_progress';
+    case 'completed': return 'completed';
+    case 'closed': return 'closed_billed'; // Map 'closed' to 'closed_billed' for tickets
+    default: return null;
+  }
+}
 
 export interface JobPLFilters {
   startDate: string;
@@ -145,7 +193,10 @@ export class JobPLService {
       .order('project_number', { ascending: false });
 
     if (jobStatus !== 'all') {
-      query = query.eq('status', jobStatus);
+      const mappedStatus = mapToProjectStatus(jobStatus);
+      if (mappedStatus) {
+        query = query.eq('status', mappedStatus);
+      }
     }
 
     if (customerId) {
@@ -175,7 +226,7 @@ export class JobPLService {
         job_name: project.name,
         job_type: 'Project',
         customer_id: project.customer_id,
-        customer_name: (project.customers as any)?.name || 'Unknown',
+        customer_name: (project as unknown as ProjectWithCustomer).customers?.name || 'Unknown',
         status: project.status || '',
         site_name: project.location || undefined,
         revenue,
@@ -217,7 +268,10 @@ export class JobPLService {
       .order('ticket_number', { ascending: false });
 
     if (jobStatus !== 'all') {
-      query = query.eq('status', jobStatus);
+      const mappedStatus = mapToTicketStatus(jobStatus);
+      if (mappedStatus) {
+        query = query.eq('status', mappedStatus);
+      }
     }
 
     if (customerId) {
@@ -251,9 +305,9 @@ export class JobPLService {
         job_name: ticket.title,
         job_type: 'Service Ticket',
         customer_id: ticket.customer_id,
-        customer_name: (ticket.customers as any)?.name || 'Unknown',
+        customer_name: (ticket as unknown as TicketWithRelations).customers?.name || 'Unknown',
         status: ticket.status || '',
-        site_name: (ticket.customer_locations as any)?.location_name || undefined,
+        site_name: (ticket as unknown as TicketWithRelations).customer_locations?.location_name || undefined,
         revenue,
         labor_cost: laborCost,
         parts_cost: partsCost,
@@ -346,7 +400,7 @@ export class JobPLService {
     let totalCost = 0;
     for (const ticket of tickets || []) {
       const hours = parseFloat(String(ticket.hours_onsite || 0));
-      const costRate = parseFloat(String((ticket.profiles as any)?.labor_cost_per_hour || 45));
+      const costRate = parseFloat(String((ticket as unknown as TicketWithProfile).profiles?.labor_cost_per_hour || 45));
       totalCost += hours * costRate;
     }
 
@@ -402,7 +456,7 @@ export class JobPLService {
     }
 
     const hours = parseFloat(String(ticket.hours_onsite || 0));
-    const costRate = parseFloat(String((ticket.profiles as any)?.labor_cost_per_hour || 45));
+    const costRate = parseFloat(String((ticket as unknown as TicketWithProfile).profiles?.labor_cost_per_hour || 45));
 
     return hours * costRate;
   }
@@ -426,12 +480,12 @@ export class JobPLService {
 
     const ticketIds = tickets.map((t) => t.id);
 
-    // First try to get parts cost from parts_usage table if records exist
-    const { data: partsUsage, error: usageError } = await supabase
-      .from('parts_usage')
+    // First try to get parts cost from ticket_parts_used table if records exist
+    const { data: partsUsed, error: usageError } = await supabase
+      .from('ticket_parts_used')
       .select(
         `
-        quantity_used,
+        quantity,
         created_at,
         part_id,
         parts!inner(id, unit_price, part_inventory(unit_cost))
@@ -441,11 +495,12 @@ export class JobPLService {
       .gte('created_at', startDate)
       .lte('created_at', endDate);
 
-    if (!usageError && partsUsage && partsUsage.length > 0) {
+    if (!usageError && partsUsed && partsUsed.length > 0) {
       let totalCost = 0;
-      for (const usage of partsUsage) {
-        const unitCost = this.getPartCost(usage);
-        totalCost += parseFloat(String(usage.quantity_used || 0)) * unitCost;
+      for (const usage of partsUsed) {
+        // Get unit_cost from parts relationship
+        const unitCost = this.getPartCost(usage as unknown as PartUsageWithParts);
+        totalCost += (usage.quantity || 0) * unitCost;
       }
       return totalCost;
     }
@@ -495,12 +550,12 @@ export class JobPLService {
     startDate: string,
     endDate: string
   ): Promise<number> {
-    // First try to get parts cost from parts_usage table if records exist
-    const { data: partsUsage, error: usageError } = await supabase
-      .from('parts_usage')
+    // First try to get parts cost from ticket_parts_used table if records exist
+    const { data: partsUsed, error: usageError } = await supabase
+      .from('ticket_parts_used')
       .select(
         `
-        quantity_used,
+        quantity,
         created_at,
         part_id,
         parts!inner(unit_price)
@@ -510,11 +565,12 @@ export class JobPLService {
       .gte('created_at', startDate)
       .lte('created_at', endDate);
 
-    if (!usageError && partsUsage && partsUsage.length > 0) {
+    if (!usageError && partsUsed && partsUsed.length > 0) {
       let totalCost = 0;
-      for (const usage of partsUsage) {
+      for (const usage of partsUsed) {
+        // Look up unit_cost from part_inventory
         const unitCost = await this.getPartCostById(usage.part_id);
-        totalCost += parseFloat(String(usage.quantity_used || 0)) * unitCost;
+        totalCost += (usage.quantity || 0) * unitCost;
       }
       return totalCost;
     }
@@ -559,7 +615,7 @@ export class JobPLService {
   /**
    * Get part cost from part_inventory, fallback to parts.unit_price
    */
-  private static getPartCost(usage: any): number {
+  private static getPartCost(usage: PartUsageWithParts): number {
     // Check if part_inventory exists through the parts relationship
     if (usage.parts?.part_inventory && Array.isArray(usage.parts.part_inventory) && usage.parts.part_inventory.length > 0) {
       const inventory = usage.parts.part_inventory[0];

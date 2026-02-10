@@ -8,25 +8,46 @@ import {
   FileText,
   Clock,
   User,
-  Search,
-  Filter,
-  ChevronRight,
   AlertCircle,
 } from 'lucide-react';
 import { CRMService, CustomerInteraction } from '../../services/CRMService';
 import { supabase } from '../../lib/supabase';
 
+interface RecentInteraction {
+  id: string;
+  interaction_type: string;
+  direction?: string;
+  subject?: string;
+  notes?: string;
+  outcome?: string;
+  duration_minutes?: number;
+  created_at: string;
+  customer?: { name: string };
+  creator?: { full_name: string };
+}
+
 export function InteractionsView() {
   const [loading, setLoading] = useState(true);
   const [followUps, setFollowUps] = useState<CustomerInteraction[]>([]);
-  const [recentInteractions, setRecentInteractions] = useState<any[]>([]);
+  const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
   const [activeTab, setActiveTab] = useState<'follow-ups' | 'recent'>('follow-ups');
 
-  useEffect(() => {
-    loadData();
+  const loadRecentInteractions = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('customer_interactions')
+      .select(`
+        *,
+        customer:customers(id, name, phone, email),
+        creator:profiles!created_by(full_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    return (data as unknown as RecentInteraction[]) || [];
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [followUpsData, recentData] = await Promise.all([
@@ -41,25 +62,14 @@ export function InteractionsView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadRecentInteractions]);
 
-  const loadRecentInteractions = async () => {
-    const { data, error } = await supabase
-      .from('customer_interactions')
-      .select(`
-        *,
-        customer:customers(id, name, phone, email),
-        creator:profiles!created_by(full_name)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(50);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-    if (error) throw error;
-    return data || [];
-  };
-
-  const getInteractionIcon = (type: string) => {
-    switch (type) {
+  const getInteractionIcon = (type: string | null) => {
+    switch (type ?? '') {
       case 'call':
         return Phone;
       case 'email':
@@ -77,8 +87,8 @@ export function InteractionsView() {
     }
   };
 
-  const getInteractionColor = (type: string) => {
-    switch (type) {
+  const getInteractionColor = (type: string | null) => {
+    switch (type ?? '') {
       case 'call':
         return 'bg-green-100 dark:bg-green-900/30 text-green-600';
       case 'email':
@@ -96,11 +106,13 @@ export function InteractionsView() {
     }
   };
 
-  const isOverdue = (date: string) => {
+  const isOverdue = (date: string | null) => {
+    if (!date) return false;
     return new Date(date) < new Date(new Date().toISOString().split('T')[0]);
   };
 
-  const isToday = (date: string) => {
+  const isToday = (date: string | null) => {
+    if (!date) return false;
     return date === new Date().toISOString().split('T')[0];
   };
 

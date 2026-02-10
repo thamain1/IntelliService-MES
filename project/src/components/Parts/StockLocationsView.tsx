@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { MapPin, Package, Truck, Warehouse, Building2, Plus, Search, Hash, Wrench } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { MapPin, Package, Truck, Warehouse, Building2, Plus, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
-import { inventoryService, type SerializedPartInfo } from '../../services/InventoryService';
+import { inventoryService } from '../../services/InventoryService';
 
 type StockLocation = Database['public']['Tables']['stock_locations']['Row'];
 type PartInventory = Database['public']['Tables']['part_inventory']['Row'] & {
@@ -25,30 +25,15 @@ interface StockLocationsViewProps {
 }
 
 export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProps) {
-  const isTool = itemType === 'tool';
-  const itemLabel = isTool ? 'Tool' : 'Part';
-  const itemLabelPlural = isTool ? 'Tools' : 'Parts';
-  const ItemIcon = isTool ? Wrench : Package;
   const [locations, setLocations] = useState<StockLocation[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<StockLocation | null>(null);
   const [inventory, setInventory] = useState<PartInventory[]>([]);
-  const [serializedInventory, setSerializedInventory] = useState<SerializedPartInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [locationTypeFilter, setLocationTypeFilter] = useState<string>('all');
 
-  useEffect(() => {
-    loadLocations();
-  }, []);
-
-  useEffect(() => {
-    if (selectedLocation) {
-      loadInventory(selectedLocation.id);
-    }
-  }, [selectedLocation, itemType]);
-
-  const loadLocations = async () => {
+  const loadLocations = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('stock_locations')
@@ -58,18 +43,18 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
         .order('name');
 
       if (error) throw error;
-      setLocations(data || []);
+      setLocations((data as unknown as StockLocation[]) || []);
       if (data && data.length > 0 && !selectedLocation) {
-        setSelectedLocation(data[0]);
+        setSelectedLocation(data[0] as unknown as StockLocation);
       }
     } catch (error) {
       console.error('Error loading locations:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedLocation]);
 
-  const loadInventory = async (locationId: string) => {
+  const loadInventory = useCallback(async (locationId: string) => {
     setInventoryLoading(true);
     try {
       const { data, error } = await supabase
@@ -85,16 +70,25 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
         .order('quantity', { ascending: false });
 
       if (error) throw error;
-      setInventory(data || []);
+      setInventory((data as unknown as PartInventory[]) || []);
 
-      const serialized = await inventoryService.getSerializedPartsAvailable(locationId);
-      setSerializedInventory(serialized);
+      await inventoryService.getSerializedPartsAvailable(locationId);
     } catch (error) {
       console.error('Error loading inventory:', error);
     } finally {
       setInventoryLoading(false);
     }
-  };
+  }, [itemType]);
+
+  useEffect(() => {
+    loadLocations();
+  }, [loadLocations]);
+
+  useEffect(() => {
+    if (selectedLocation) {
+      loadInventory(selectedLocation.id);
+    }
+  }, [selectedLocation, loadInventory]);
 
   const filteredLocations = locations.filter((location) => {
     const matchesSearch =

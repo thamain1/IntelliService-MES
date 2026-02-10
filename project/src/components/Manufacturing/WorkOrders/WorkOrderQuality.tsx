@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ClipboardCheck,
   Play,
@@ -6,13 +6,11 @@ import {
   XCircle,
   AlertTriangle,
   Plus,
-  Eye,
   Camera,
-  FileText,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import { QualityExecutionService, InspectionRun, InspectionPlan, Measurement, MeasurementInput } from '../../../services/QualityExecutionService';
+import { QualityExecutionService, InspectionRun, InspectionPlan, MeasurementInput, Characteristic } from '../../../services/QualityExecutionService';
 import { useAuth } from '../../../contexts/AuthContext';
 
 interface WorkOrderQualityProps {
@@ -22,7 +20,7 @@ interface WorkOrderQualityProps {
 }
 
 export function WorkOrderQuality({ productionOrderId, workCenterId, operationRunId }: WorkOrderQualityProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [inspectionRuns, setInspectionRuns] = useState<InspectionRun[]>([]);
   const [availablePlans, setAvailablePlans] = useState<InspectionPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,11 +28,7 @@ export function WorkOrderQuality({ productionOrderId, workCenterId, operationRun
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadData();
-  }, [productionOrderId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [runs, plans] = await Promise.all([
@@ -48,11 +42,15 @@ export function WorkOrderQuality({ productionOrderId, workCenterId, operationRun
     } finally {
       setLoading(false);
     }
-  };
+  }, [productionOrderId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleCreateInspection = async (planId: string) => {
     try {
-      const run = await QualityExecutionService.createInspectionRun({
+      await QualityExecutionService.createInspectionRun({
         inspection_plan_id: planId,
         production_order_id: productionOrderId,
         work_center_id: workCenterId,
@@ -355,7 +353,6 @@ interface InspectionFormProps {
 }
 
 function InspectionForm({ inspection, onComplete, onCancel }: InspectionFormProps) {
-  const { user } = useAuth();
   const [measurements, setMeasurements] = useState<Record<string, MeasurementInput>>({});
   const [saving, setSaving] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -378,7 +375,7 @@ function InspectionForm({ inspection, onComplete, onCancel }: InspectionFormProp
     setMeasurements(existing);
   }, [inspection]);
 
-  const handleMeasurementChange = (charId: string, field: string, value: any) => {
+  const handleMeasurementChange = (charId: string, field: string, value: string | number | boolean | undefined) => {
     setMeasurements(prev => ({
       ...prev,
       [charId]: {
@@ -424,7 +421,7 @@ function InspectionForm({ inspection, onComplete, onCancel }: InspectionFormProp
     }
   };
 
-  const isWithinSpec = (char: any, value: number | undefined): boolean | null => {
+  const isWithinSpec = (char: Characteristic, value: number | undefined): boolean | null => {
     if (value === undefined || value === null) return null;
     if (char.lsl !== null && value < char.lsl) return false;
     if (char.usl !== null && value > char.usl) return false;

@@ -244,9 +244,9 @@ export class APService {
    * Generate next bill number
    */
   static async getNextBillNumber(): Promise<string> {
-    const { data, error } = await supabase.rpc('generate_bill_number');
+    const { data: _data, error } = await supabase.rpc('generate_bill_number');
     if (error) throw error;
-    return data;
+    return _data;
   }
 
   /**

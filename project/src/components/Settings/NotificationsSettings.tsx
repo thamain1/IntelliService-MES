@@ -54,17 +54,20 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   quiet_hours_end: '07:00',
 };
 
+interface UserPreferenceRow {
+  id: string;
+  preferences: {
+    notifications?: NotificationPreferences;
+  };
+}
+
 export function NotificationsSettings() {
   const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
-    loadPreferences();
-  }, []);
-
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     try {
       setLoading(true);
       const { data: userData } = await supabase.auth.getUser();
@@ -78,15 +81,20 @@ export function NotificationsSettings() {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      if (data?.preferences?.notifications) {
-        setPreferences({ ...DEFAULT_PREFERENCES, ...data.preferences.notifications });
+      const prefData = data as unknown as UserPreferenceRow | null;
+      if (prefData?.preferences?.notifications) {
+        setPreferences({ ...DEFAULT_PREFERENCES, ...prefData.preferences.notifications });
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadPreferences();
+  }, [loadPreferences]);
 
   const handleSave = async () => {
     try {
@@ -103,12 +111,13 @@ export function NotificationsSettings() {
         .eq('user_id', userData.user.id)
         .maybeSingle();
 
+      const existingData = existing as unknown as UserPreferenceRow | null;
       const newPreferences = {
-        ...(existing?.preferences || {}),
+        ...(existingData?.preferences || {}),
         notifications: preferences,
       };
 
-      if (existing) {
+      if (existingData) {
         await supabase
           .from('user_preferences')
           .update({ preferences: newPreferences })

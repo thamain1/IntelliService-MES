@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, BarChart3, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { OEEService, ProductionCount, RecordCountInput } from '../../../services/OEEService';
 import { DowntimeService, DowntimeReason } from '../../../services/DowntimeService';
@@ -31,11 +31,7 @@ export function WorkOrderCounts({ orderId, orderStatus, onUpdate }: WorkOrderCou
     profile?.role === 'technician' || profile?.role === 'operator' || profile?.role === 'supervisor';
   const isComplete = orderStatus === 'complete';
 
-  useEffect(() => {
-    loadData();
-  }, [orderId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -61,7 +57,11 @@ export function WorkOrderCounts({ orderId, orderStatus, onUpdate }: WorkOrderCou
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleRecordCount = async () => {
     if (!selectedRun) {

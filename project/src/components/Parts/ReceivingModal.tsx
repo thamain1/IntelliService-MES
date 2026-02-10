@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, Package, MapPin, Hash, Calendar, CheckCircle, AlertCircle, Ticket } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Package, MapPin, Hash, Calendar, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { inventoryService } from '../../services/InventoryService';
 
-type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row'];
+type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row'] & {
+  vendors?: { name: string };
+};
 type PurchaseOrderLine = Database['public']['Tables']['purchase_order_lines']['Row'];
 type Part = Database['public']['Tables']['parts']['Row'];
 type StockLocation = Database['public']['Tables']['stock_locations']['Row'];
@@ -12,7 +14,7 @@ type StockLocation = Database['public']['Tables']['stock_locations']['Row'];
 interface LinkedTicketInfo {
   ticket_number: string;
   title: string;
-  customer_name: string;
+  customers: { name: string };
 }
 
 interface POLineWithPart extends PurchaseOrderLine {
@@ -20,7 +22,7 @@ interface POLineWithPart extends PurchaseOrderLine {
   quantity_received_total?: number;
   linked_ticket_id?: string | null;
   linked_request_id?: string | null;
-  linked_ticket?: LinkedTicketInfo | null;
+  tickets?: LinkedTicketInfo | null;
 }
 
 interface ReceivingItem {
@@ -47,11 +49,7 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
   const [saving, setSaving] = useState(false);
   const [receivingData, setReceivingData] = useState<Record<string, ReceivingItem>>({});
 
-  useEffect(() => {
-    loadData();
-  }, [purchaseOrderId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -77,15 +75,15 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
       if (linesResult.error) throw linesResult.error;
       if (locationsResult.error) throw locationsResult.error;
 
-      setPO(poResult.data);
+      setPO(poResult.data as unknown as PurchaseOrder);
       setLines(linesResult.data as POLineWithPart[]);
-      setStockLocations(locationsResult.data);
+      setStockLocations((locationsResult.data as unknown as StockLocation[]));
 
       const initialData: Record<string, ReceivingItem> = {};
-      linesResult.data.forEach((line) => {
+      (linesResult.data as POLineWithPart[]).forEach((line) => {
         initialData[line.id] = {
           line_id: line.id,
-          quantity_received: line.quantity_ordered,
+          quantity_received: line.quantity_ordered - (line.quantity_received || 0),
           quantity_damaged: 0,
           stock_location_id: locationsResult.data[0]?.id || '',
           serial_numbers: [],
@@ -100,9 +98,13 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
     } finally {
       setLoading(false);
     }
-  };
+  }, [purchaseOrderId]);
 
-  const updateReceivingItem = (lineId: string, field: keyof ReceivingItem, value: any) => {
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const updateReceivingItem = (lineId: string, field: keyof ReceivingItem, value: number | string | string[]) => {
     setReceivingData((prev) => ({
       ...prev,
       [lineId]: {
@@ -217,9 +219,10 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
 
       alert('Parts received successfully!');
       onComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error receiving parts:', error);
-      const errorMessage = error?.message || error?.hint || 'Failed to receive parts. Please try again.';
+      const err = error as { message?: string; hint?: string };
+      const errorMessage = err?.message || err?.hint || 'Failed to receive parts. Please try again.';
       alert(`Error: ${errorMessage}`);
     } finally {
       setSaving(false);
@@ -246,7 +249,7 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Receive Parts</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              PO: {po.po_number} | Vendor: {(po as any).vendors?.name}
+              PO: {po.po_number} | Vendor: {(po as unknown as { vendors: { name: string } }).vendors?.name}
             </p>
           </div>
           <button
@@ -302,18 +305,18 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
                 </div>
 
                 {/* Show linked ticket info if present */}
-                {line.linked_ticket_id && (line as any).tickets && (
+                {line.linked_ticket_id && (line as unknown as { tickets?: { ticket_number: string; title: string; customers?: { name: string } } }).tickets && (
                   <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                     <div className="flex items-center space-x-2">
                       <Ticket className="w-4 h-4 text-green-600" />
                       <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                        Parts for Ticket: {(line as any).tickets?.ticket_number}
+                        Parts for Ticket: {(line as unknown as { tickets?: { ticket_number: string } }).tickets?.ticket_number}
                       </span>
                     </div>
                     <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                      {(line as any).tickets?.title}
-                      {(line as any).tickets?.customers?.name && (
-                        <span className="ml-2">• {(line as any).tickets?.customers?.name}</span>
+                      {(line as unknown as { tickets?: { title: string } }).tickets?.title}
+                      {(line as unknown as { tickets?: { customers?: { name: string } } }).tickets?.customers?.name && (
+                        <span className="ml-2">• {(line as unknown as { tickets?: { customers?: { name: string } } }).tickets?.customers?.name}</span>
                       )}
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-500 mt-1">

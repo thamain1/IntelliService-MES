@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
-import { Clock, LogIn, LogOut, Calendar, User, CheckCircle, XCircle, MapPin, Edit, Plus, MapPinOff } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Clock, LogIn, LogOut, User, CheckCircle, XCircle, MapPin, MapPinOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { GeolocationService, GeolocationPosition, GeolocationError } from '../../services/GeolocationService';
+import { GeolocationService, GeolocationPosition } from '../../services/GeolocationService';
 import type { Database } from '../../lib/database.types';
 
 type TimeLog = Database['public']['Tables']['time_logs']['Row'] & {
@@ -20,8 +20,6 @@ export function TimeClockView() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [showAllUsers, setShowAllUsers] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
 
   // Location sharing state
   const [isLocationSharing, setIsLocationSharing] = useState(false);
@@ -35,7 +33,7 @@ export function TimeClockView() {
   const LOCATION_UPDATE_INTERVAL = 15 * 60 * 1000;
 
   // Start location sharing with 15-minute intervals
-  const startLocationSharing = async () => {
+  const startLocationSharing = useCallback(async () => {
     if (!profile || locationSharingStarted.current) return;
 
     setLocationError(null);
@@ -61,7 +59,7 @@ export function TimeClockView() {
       setIsLocationSharing(true);
       console.log('[TimeClockView] Location sharing started with 15-minute interval');
     }
-  };
+  }, [profile, LOCATION_UPDATE_INTERVAL]);
 
   // Stop location sharing
   const stopLocationSharing = () => {
@@ -72,35 +70,7 @@ export function TimeClockView() {
     console.log('[TimeClockView] Location sharing stopped');
   };
 
-  useEffect(() => {
-    loadTimeLogs();
-    checkActiveLog();
-
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [filterDate, showAllUsers]);
-
-  // Auto-resume location sharing if already clocked in
-  useEffect(() => {
-    if (activeLog && profile && !locationSharingStarted.current) {
-      console.log('[TimeClockView] Already clocked in, auto-resuming location sharing');
-      startLocationSharing();
-    }
-  }, [activeLog, profile]);
-
-  // Cleanup location sharing on unmount
-  useEffect(() => {
-    return () => {
-      if (locationSharingStarted.current) {
-        stopLocationSharing();
-      }
-    };
-  }, []);
-
-  const loadTimeLogs = async () => {
+  const loadTimeLogs = useCallback(async () => {
     try {
       let query = supabase
         .from('time_logs')
@@ -116,15 +86,15 @@ export function TimeClockView() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setTimeLogs(data || []);
+      setTimeLogs((data as unknown as TimeLog[]) || []);
     } catch (error) {
       console.error('Error loading time logs:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterDate, showAllUsers, profile]);
 
-  const checkActiveLog = async () => {
+  const checkActiveLog = useCallback(async () => {
     if (!profile) return;
 
     try {
@@ -138,11 +108,30 @@ export function TimeClockView() {
         .maybeSingle();
 
       if (error) throw error;
-      setActiveLog(data);
+      setActiveLog((data as unknown as TimeLog));
     } catch (error) {
       console.error('Error checking active log:', error);
     }
-  };
+  }, [profile]);
+
+  useEffect(() => {
+    loadTimeLogs();
+    checkActiveLog();
+
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [loadTimeLogs, checkActiveLog]);
+
+  // Auto-resume location sharing if already clocked in
+  useEffect(() => {
+    if (activeLog && profile && !locationSharingStarted.current) {
+      console.log('[TimeClockView] Already clocked in, auto-resuming location sharing');
+      startLocationSharing();
+    }
+  }, [activeLog, profile, startLocationSharing]);
 
   const handleClockIn = async () => {
     if (!profile || clockActionLoading) return;

@@ -48,11 +48,7 @@ export function EquipmentReliabilityReport() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadReliabilityData();
-  }, [dateRange]);
-
-  const loadReliabilityData = async () => {
+  const loadReliabilityData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -210,7 +206,11 @@ export function EquipmentReliabilityReport() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start, end]);
+
+  useEffect(() => {
+    loadReliabilityData();
+  }, [loadReliabilityData]);
 
   const getExportData = (): ExportData | null => {
     if (reliabilityData.length === 0) return null;

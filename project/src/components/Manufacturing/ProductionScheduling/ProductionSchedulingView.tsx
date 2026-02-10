@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Filter, ChevronLeft, ChevronRight, RefreshCw, Layers } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Layers } from 'lucide-react';
 import { ProductionSchedulingService, WorkCenterSchedule, WorkCenterCapacity } from '../../../services/ProductionSchedulingService';
 import { ManufacturingService, WorkCenter } from '../../../services/ManufacturingService';
 import { SchedulingGrid } from './SchedulingGrid';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export function ProductionSchedulingView() {
-  const { profile } = useAuth();
+  const { profile: _profile } = useAuth();
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
   const [schedules, setSchedules] = useState<WorkCenterSchedule[]>([]);
   const [capacities, setCapacities] = useState<WorkCenterCapacity[]>([]);
@@ -19,30 +19,22 @@ export function ProductionSchedulingView() {
     end.setDate(end.getDate() + 7);
     return { start, end };
   });
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [_viewMode, _setViewMode] = useState<'grid' | 'list'>('grid');
 
-  useEffect(() => {
-    loadWorkCenters();
-  }, []);
-
-  useEffect(() => {
-    loadSchedules();
-  }, [selectedWorkCenter, dateRange]);
-
-  const loadWorkCenters = async () => {
+  const loadWorkCenters = useCallback(async () => {
     try {
       const wcs = await ManufacturingService.getWorkCenters(true);
       setWorkCenters(wcs);
     } catch (error) {
       console.error('Error loading work centers:', error);
     }
-  };
+  }, []);
 
-  const loadSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
     try {
       setLoading(true);
 
-      const filters: any = {
+      const filters: Record<string, string> = {
         from_date: dateRange.start.toISOString(),
         to_date: dateRange.end.toISOString(),
       };
@@ -72,7 +64,15 @@ export function ProductionSchedulingView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, selectedWorkCenter, workCenters]);
+
+  useEffect(() => {
+    loadWorkCenters();
+  }, [loadWorkCenters]);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
 
   const handlePrevWeek = () => {
     setDateRange(prev => ({

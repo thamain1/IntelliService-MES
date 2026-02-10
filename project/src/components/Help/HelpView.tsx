@@ -2,8 +2,6 @@ import { useState } from 'react';
 import {
   Book,
   Search,
-  ChevronDown,
-  ChevronRight,
   HelpCircle,
   Ticket,
   Calendar,
@@ -39,7 +37,7 @@ interface Section {
 export function HelpView() {
   const [activeSection, setActiveSection] = useState('getting-started');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['getting-started']));
+  const [_expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['getting-started']));
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev => {

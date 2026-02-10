@@ -28,12 +28,7 @@ export function VendorContractsView({ vendorId, showVendorColumn = true }: Vendo
     expiringNext30Days: 0,
   });
 
-  useEffect(() => {
-    loadContracts();
-    loadStats();
-  }, [vendorId, statusFilter, typeFilter, searchTerm]);
-
-  const loadContracts = async () => {
+  const loadContracts = useCallback(async () => {
     try {
       const data = await VendorContractService.listContracts({
         vendorId,
@@ -47,19 +42,24 @@ export function VendorContractsView({ vendorId, showVendorColumn = true }: Vendo
     } finally {
       setLoading(false);
     }
-  };
+  }, [vendorId, statusFilter, typeFilter, searchTerm]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await VendorContractService.getContractStats(vendorId);
       setStats(data);
     } catch (error) {
       console.error('Error loading vendor contract stats:', error);
     }
-  };
+  }, [vendorId]);
+
+  useEffect(() => {
+    loadContracts();
+    loadStats();
+  }, [loadContracts, loadStats]);
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { className: string; icon: any }> = {
+    const badges: Record<string, { className: string; icon: React.ComponentType<{ className?: string }> }> = {
       active: { className: 'badge badge-green', icon: CheckCircle },
       draft: { className: 'badge badge-gray', icon: Clock },
       expired: { className: 'badge badge-orange', icon: AlertCircle },

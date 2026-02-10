@@ -34,11 +34,7 @@ export function CustomerValueInsight() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMetrics();
-  }, [dateRange]);
-
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -72,7 +68,7 @@ export function CustomerValueInsight() {
           .order('completed_date', { ascending: false })
           .limit(1);
 
-        const lastServiceDate = tickets?.[0]?.completed_date || null;
+        const lastServiceDate = (tickets?.[0]?.completed_date as unknown as string) || null;
 
         customerData.push({
           id: customer.id,
@@ -102,7 +98,11 @@ export function CustomerValueInsight() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const getExportData = useCallback((): ExportData => {
     return {

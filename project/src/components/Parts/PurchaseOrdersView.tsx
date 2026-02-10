@@ -93,38 +93,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
 
   const [lineItems, setLineItems] = useState<POLineItem[]>([]);
 
-  useEffect(() => {
-    loadData();
-  }, [itemType]);
-
-  // Auto-open modal and pre-populate when linkedRequest is provided
-  useEffect(() => {
-    if (linkedRequest && parts.length > 0) {
-      // Pre-populate line items from the linked request
-      const prePopulatedItems: POLineItem[] = linkedRequest.parts_requested.map((reqPart) => {
-        const part = parts.find((p) => p.id === reqPart.part_id);
-        return {
-          id: crypto.randomUUID(),
-          part_id: reqPart.part_id,
-          description: reqPart.part_name,
-          quantity_ordered: reqPart.quantity_requested,
-          unit_price: part?.unit_price || 0,
-          line_total: reqPart.quantity_requested * (part?.unit_price || 0),
-          linked_ticket_id: linkedRequest.ticket_id,
-          linked_request_id: linkedRequest.request_id,
-          request_line_id: reqPart.line_id,
-        };
-      });
-      setLineItems(prePopulatedItems);
-      setFormData({
-        ...formData,
-        notes: `Parts request for Ticket ${linkedRequest.ticket_number} - ${linkedRequest.customer_name}`,
-      });
-      setShowAddModal(true);
-    }
-  }, [linkedRequest, parts]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [posResult, vendorsResult, partsResult] = await Promise.all([
         supabase
@@ -147,15 +116,19 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
       if (vendorsResult.error) throw vendorsResult.error;
       if (partsResult.error) throw partsResult.error;
 
-      setPurchaseOrders(posResult.data || []);
-      setVendors(vendorsResult.data || []);
-      setParts(partsResult.data || []);
+      setPurchaseOrders((posResult.data as unknown as PurchaseOrder[]) || []);
+      setVendors((vendorsResult.data as unknown as Vendor[]) || []);
+      setParts((partsResult.data as unknown as Part[]) || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [itemType]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const addLineItem = () => {
     setLineItems([
@@ -171,7 +144,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
     ]);
   };
 
-  const updateLineItem = (id: string, field: keyof POLineItem, value: any) => {
+  const updateLineItem = (id: string, field: keyof POLineItem, value: string | number) => {
     setLineItems(
       lineItems.map((item) => {
         if (item.id !== id) return item;
@@ -250,7 +223,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
         linked_request_id: item.linked_request_id || null,
       }));
 
-      const { data: insertedLines, error: linesError } = await supabase
+      const { error: linesError } = await supabase
         .from('purchase_order_lines')
         .insert(lineItemsToInsert)
         .select();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Trash2, CheckCircle, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Package, Plus, Trash2, CheckCircle, RotateCcw } from 'lucide-react';
 import { ManufacturingService, BOMItem, CreateBOMItemInput } from '../../../services/ManufacturingService';
 import { MESInventoryService, MaterialConsumptionLog } from '../../../services/MESInventoryService';
 import { supabase } from '../../../lib/supabase';
@@ -41,33 +41,33 @@ export function WorkOrderMaterials({ orderId, orderStatus, bom, onUpdate }: Work
   const canConsume = canManage || profile?.role === 'technician' || profile?.role === 'operator' || profile?.role === 'material_handler';
   const isComplete = orderStatus === 'complete';
 
-  useEffect(() => {
-    loadReferenceData();
-    loadConsumptionLog();
-  }, [orderId]);
-
-  const loadReferenceData = async () => {
+  const loadReferenceData = useCallback(async () => {
     try {
       const [partsResult, locationsResult] = await Promise.all([
         supabase.from('parts').select('id, name, part_number').eq('is_active', true).order('name'),
         supabase.from('stock_locations').select('id, name, location_type').eq('is_active', true).order('name'),
       ]);
 
-      setParts(partsResult.data || []);
-      setLocations(locationsResult.data || []);
+      setParts((partsResult.data as unknown as Part[]) || []);
+      setLocations((locationsResult.data as unknown as Location[]) || []);
     } catch (error) {
       console.error('Error loading reference data:', error);
     }
-  };
+  }, []);
 
-  const loadConsumptionLog = async () => {
+  const loadConsumptionLog = useCallback(async () => {
     try {
       const log = await MESInventoryService.getConsumptionLog(orderId);
       setConsumptionLog(log);
     } catch (error) {
       console.error('Error loading consumption log:', error);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    loadReferenceData();
+    loadConsumptionLog();
+  }, [loadReferenceData, loadConsumptionLog]);
 
   const handleAddItem = async () => {
     if (!newItem.part_id) return;

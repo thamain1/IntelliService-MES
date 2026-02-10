@@ -29,7 +29,7 @@ export function LoginForm() {
       } else {
         await signIn(email, password);
       }
-    } catch (_err) {
+    } catch {
       setError(isSignUp ? 'Failed to create account. Email may already be in use.' : 'Invalid email or password');
     } finally {
       setLoading(false);

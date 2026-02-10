@@ -29,12 +29,7 @@ export function BillsView({ onNewBill, onViewBill, onRecordPayment }: BillsViewP
   const [filters, setFilters] = useState<BillFilters>({});
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
 
-  useEffect(() => {
-    loadData();
-    loadVendors();
-  }, [filters]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [billsData, summaryData] = await Promise.all([
@@ -48,9 +43,9 @@ export function BillsView({ onNewBill, onViewBill, onRecordPayment }: BillsViewP
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, searchQuery]);
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('vendors')
@@ -61,7 +56,12 @@ export function BillsView({ onNewBill, onViewBill, onRecordPayment }: BillsViewP
     } catch (error) {
       console.error('Failed to load vendors:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    loadVendors();
+  }, [loadData, loadVendors]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

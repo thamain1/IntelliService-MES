@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Play, Square, Timer } from 'lucide-react';
+import { Play, Square, Timer } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ManufacturingService } from '../../services/ManufacturingService';
 import type { Database } from '../../lib/database.types';
@@ -12,41 +12,13 @@ interface ProductionTimeClockProps {
 }
 
 export function ProductionTimeClock({ orderId, onClockAction }: ProductionTimeClockProps) {
-  const { profile } = useAuth();
+  const { profile: _profile } = useAuth();
   const [activeLog, setActiveLog] = useState<TimeLogRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState<string>('00:00:00');
 
-  useEffect(() => {
-    loadActiveLog();
-  }, [orderId]);
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-
-    if (activeLog && !activeLog.clock_out) {
-      interval = setInterval(() => {
-        const clockIn = new Date(activeLog.clock_in).getTime();
-        const now = Date.now();
-        const elapsed = now - clockIn;
-
-        const hours = Math.floor(elapsed / (1000 * 60 * 60));
-        const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
-
-        setElapsedTime(
-          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-        );
-      }, 1000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeLog]);
-
-  const loadActiveLog = async () => {
+  const loadActiveLog = useCallback(async () => {
     setLoading(true);
     try {
       const log = await ManufacturingService.getActiveTimeLog(orderId);
@@ -56,7 +28,11 @@ export function ProductionTimeClock({ orderId, onClockAction }: ProductionTimeCl
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    loadActiveLog();
+  }, [loadActiveLog]);
 
   const handleClockIn = async () => {
     setActionLoading(true);

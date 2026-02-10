@@ -8,16 +8,13 @@ import {
   DollarSign,
   MessageSquare,
   FileText,
-  ChevronRight,
   Search,
-  Filter,
   Plus,
-  Clock,
   CheckCircle,
   X,
   AlertCircle,
 } from 'lucide-react';
-import { CRMService, Lead, CreateInteractionInput } from '../../services/CRMService';
+import { CRMService, Lead } from '../../services/CRMService';
 import { NewInteractionModal } from './NewInteractionModal';
 
 interface LeadsInboxProps {
@@ -98,9 +95,9 @@ export function LeadsInbox({ onRefresh }: LeadsInboxProps) {
       });
       await loadLeads();
       onRefresh?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to create lead:', err);
-      setCreateError(err?.message || 'Failed to create lead. Please try again.');
+      setCreateError((err as Error)?.message || 'Failed to create lead. Please try again.');
     } finally {
       setCreating(false);
     }

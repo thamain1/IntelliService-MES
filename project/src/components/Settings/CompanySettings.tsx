@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building, Mail, Phone, MapPin, Globe, FileText, Save, Upload, AlertCircle } from 'lucide-react';
+import { Building, Mail, Phone, FileText, Save, Upload, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface CompanySettingsData {
@@ -61,7 +61,7 @@ export function CompanySettings() {
       const loadedSettings = { ...DEFAULT_SETTINGS };
       data?.forEach((setting) => {
         if (setting.setting_key in loadedSettings) {
-          (loadedSettings as any)[setting.setting_key] = setting.setting_value || '';
+          (loadedSettings as unknown as Record<string, string>)[setting.setting_key] = setting.setting_value || '';
         }
       });
 

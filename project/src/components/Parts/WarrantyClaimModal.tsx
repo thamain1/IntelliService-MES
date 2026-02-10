@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import { X, Shield, AlertCircle, Phone, Globe, FileText, DollarSign, Calendar } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Shield, AlertCircle, Phone, FileText, DollarSign, Calendar } from 'lucide-react';
 import { WarrantyService, type CreateClaimInput, type WarrantyClaimSummary } from '../../services/WarrantyService';
-import { supabase } from '../../lib/supabase';
 
 interface WarrantyClaimModalProps {
   onClose: () => void;
@@ -25,7 +24,7 @@ export function WarrantyClaimModal({
   existingClaim,
 }: WarrantyClaimModalProps) {
   const isEditing = !!existingClaim;
-  const providers = WarrantyService.getCommonProviders();
+  const providers = useMemo(() => WarrantyService.getCommonProviders(), []);
 
   const [formData, setFormData] = useState<CreateClaimInput>({
     serialized_part_id: warrantyRecord?.id || existingClaim?.serialized_part_id || null,
@@ -57,7 +56,7 @@ export function WarrantyClaimModal({
         }));
       }
     }
-  }, [selectedProvider]);
+  }, [selectedProvider, providers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,8 +84,8 @@ export function WarrantyClaimModal({
 
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save claim');
+    } catch (err: unknown) {
+      setError((err as { message?: string })?.message || 'Failed to save claim');
     } finally {
       setSaving(false);
     }
@@ -101,8 +100,8 @@ export function WarrantyClaimModal({
       if (!result.success) throw new Error(result.error);
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit claim');
+    } catch (err: unknown) {
+      setError((err as { message?: string })?.message || 'Failed to submit claim');
     } finally {
       setSaving(false);
     }

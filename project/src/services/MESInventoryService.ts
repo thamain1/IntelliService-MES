@@ -190,15 +190,18 @@ export class MESInventoryService {
         success: true,
         consumptionLog: {
           ...log,
-          part_name: (log.part as any)?.name,
-          part_number: (log.part as any)?.part_number,
-          source_location_name: (log.source_location as any)?.name,
-          consumed_by_name: (log.consumed_by_user as any)?.full_name,
+          part_name: (log.part as unknown as { name: string })?.name,
+          part_number: (log.part as unknown as { part_number: string })?.part_number,
+          source_location_name: (log.source_location as unknown as { name: string })?.name,
+          consumed_by_name: (log.consumed_by_user as unknown as { full_name: string })?.full_name,
         } as MaterialConsumptionLog,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error consuming material:', error);
-      return { success: false, error: error.message || 'Failed to consume material' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to consume material' 
+      };
     }
   }
 
@@ -239,7 +242,7 @@ export class MESInventoryService {
           errors.push({
             bom_item_id: item.id,
             part_id: item.part_id,
-            part_name: (item.part as any)?.name || 'Unknown',
+            part_name: (item.part as unknown as { name: string })?.name || 'Unknown',
             error: 'No source location specified',
           });
           continue;
@@ -264,7 +267,7 @@ export class MESInventoryService {
           consumed_items.push({
             bom_item_id: item.id,
             part_id: item.part_id,
-            part_name: (item.part as any)?.name || 'Unknown',
+            part_name: (item.part as unknown as { name: string })?.name || 'Unknown',
             qty_consumed: qtyToConsume,
             consumption_log_id: result.consumptionLog.id,
           });
@@ -272,7 +275,7 @@ export class MESInventoryService {
           errors.push({
             bom_item_id: item.id,
             part_id: item.part_id,
-            part_name: (item.part as any)?.name || 'Unknown',
+            part_name: (item.part as unknown as { name: string })?.name || 'Unknown',
             error: result.error || 'Unknown error',
           });
         }
@@ -283,7 +286,7 @@ export class MESInventoryService {
         consumed_items,
         errors,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error consuming BOM for order:', error);
       return {
         success: false,
@@ -292,7 +295,7 @@ export class MESInventoryService {
           bom_item_id: '',
           part_id: '',
           part_name: '',
-          error: error.message || 'Failed to consume BOM',
+          error: error instanceof Error ? error.message : 'Failed to consume BOM',
         }],
       };
     }
@@ -346,15 +349,18 @@ export class MESInventoryService {
         success: true,
         reversalLog: {
           ...log,
-          part_name: (log.part as any)?.name,
-          part_number: (log.part as any)?.part_number,
-          source_location_name: (log.source_location as any)?.name,
-          consumed_by_name: (log.consumed_by_user as any)?.full_name,
+          part_name: (log.part as unknown as { name: string })?.name,
+          part_number: (log.part as unknown as { part_number: string })?.part_number,
+          source_location_name: (log.source_location as unknown as { name: string })?.name,
+          consumed_by_name: (log.consumed_by_user as unknown as { full_name: string })?.full_name,
         } as MaterialConsumptionLog,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reversing consumption:', error);
-      return { success: false, error: error.message || 'Failed to reverse consumption' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to reverse consumption' 
+      };
     }
   }
 
@@ -402,9 +408,13 @@ export class MESInventoryService {
         reversedCount,
         error: errors.length > 0 ? errors.join('; ') : undefined,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reversing order consumptions:', error);
-      return { success: false, reversedCount: 0, error: error.message || 'Failed to reverse consumptions' };
+      return { 
+        success: false, 
+        reversedCount: 0, 
+        error: error instanceof Error ? error.message : 'Failed to reverse consumptions' 
+      };
     }
   }
 
@@ -430,10 +440,10 @@ export class MESInventoryService {
 
       return (data || []).map(log => ({
         ...log,
-        part_name: (log.part as any)?.name,
-        part_number: (log.part as any)?.part_number,
-        source_location_name: (log.source_location as any)?.name,
-        consumed_by_name: (log.consumed_by_user as any)?.full_name,
+        part_name: (log.part as unknown as { name: string })?.name,
+        part_number: (log.part as unknown as { part_number: string })?.part_number,
+        source_location_name: (log.source_location as unknown as { name: string })?.name,
+        consumed_by_name: (log.consumed_by_user as unknown as { full_name: string })?.full_name,
       })) as MaterialConsumptionLog[];
     } catch (error) {
       console.error('Error getting consumption log:', error);
@@ -515,9 +525,13 @@ export class MESInventoryService {
         available: (inventory?.quantity || 0) - reserved,
         reserved,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error getting available inventory:', error);
-      return { available: 0, reserved: 0, error: error.message };
+      return { 
+        available: 0, 
+        reserved: 0, 
+        error: error instanceof Error ? error.message : 'An unknown error occurred' 
+      };
     }
   }
 
@@ -601,9 +615,12 @@ export class MESInventoryService {
         lot_number: serializedPart.lot_number,
         idempotency_key: idempotencyKey,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error consuming serialized part:', error);
-      return { success: false, error: error.message || 'Failed to consume serialized part' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to consume serialized part' 
+      };
     }
   }
 

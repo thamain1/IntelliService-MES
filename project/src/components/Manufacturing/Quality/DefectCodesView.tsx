@@ -4,7 +4,6 @@ import {
   Plus,
   Pencil,
   Search,
-  Filter,
   ToggleLeft,
   ToggleRight,
 } from 'lucide-react';
@@ -57,11 +56,7 @@ export function DefectCodesView() {
   });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadDefectCodes();
-  }, [showInactive]);
-
-  const loadDefectCodes = async () => {
+  const loadDefectCodes = useCallback(async () => {
     try {
       setLoading(true);
       const data = await QualityExecutionService.getDefectCodes(!showInactive);
@@ -71,7 +66,11 @@ export function DefectCodesView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showInactive]);
+
+  useEffect(() => {
+    loadDefectCodes();
+  }, [loadDefectCodes]);
 
   const handleAdd = () => {
     setEditingCode(null);

@@ -51,32 +51,33 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
   const [polling, setPolling] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadBatchDetails();
+  const loadBatchProgress = useCallback(async () => {
+    try {
+      const progressData = await DataImportService.getBatchProgress(batchId);
+      setProgress(progressData);
+    } catch (error) {
+      console.error('Error loading batch progress:', error);
+    }
   }, [batchId]);
 
-  useEffect(() => {
-    // Start polling if batch is in progress
-    if (progress && isInProgress(progress.phase)) {
-      setPolling(true);
-      const interval = setInterval(() => {
-        loadBatchProgress();
-      }, 5000);
-
-      return () => {
-        clearInterval(interval);
-        setPolling(false);
-      };
-    } else {
-      setPolling(false);
+  const loadTabData = useCallback(async (tab: TabType, entityType: string) => {
+    try {
+      if (tab === 'preview') {
+        const data = await DataImportService.getBatchPreviewRows(batchId, entityType as unknown as ImportEntityType);
+        setPreviewRows(data as PreviewRow[]);
+      } else if (tab === 'errors') {
+        const data = await DataImportService.getBatchErrorRows(batchId, entityType as unknown as ImportEntityType);
+        setErrorRows(data as ErrorRow[]);
+      } else if (tab === 'logs') {
+        const data = await DataImportService.getBatchLogs(batchId);
+        setLogs(data);
+      }
+    } catch (error) {
+      console.error(`Error loading ${tab} data:`, error);
     }
-  }, [progress?.phase]);
+  }, [batchId]);
 
-  const isInProgress = (phase: ImportPhase): boolean => {
-    return ['uploading', 'mapping', 'validating', 'committing'].includes(phase);
-  };
-
-  const loadBatchDetails = async () => {
+  const loadBatchDetails = useCallback(async () => {
     setLoading(true);
     try {
       const [batchData, progressData] = await Promise.all([
@@ -94,33 +95,28 @@ export function BatchDetailView({ batchId, onClose, onRefresh }: BatchDetailView
     } finally {
       setLoading(false);
     }
-  };
+  }, [batchId, activeTab, loadTabData]);
 
-  const loadBatchProgress = async () => {
-    try {
-      const progressData = await DataImportService.getBatchProgress(batchId);
-      setProgress(progressData);
-    } catch (error) {
-      console.error('Error loading batch progress:', error);
-    }
-  };
+  useEffect(() => {
+    loadBatchDetails();
+  }, [loadBatchDetails]);
 
-  const loadTabData = async (tab: TabType, entityType: string) => {
-    try {
-      if (tab === 'preview') {
-        const data = await DataImportService.getBatchPreviewRows(batchId, entityType as unknown as ImportEntityType);
-        setPreviewRows(data as PreviewRow[]);
-      } else if (tab === 'errors') {
-        const data = await DataImportService.getBatchErrorRows(batchId, entityType as unknown as ImportEntityType);
-        setErrorRows(data as ErrorRow[]);
-      } else if (tab === 'logs') {
-        const data = await DataImportService.getBatchLogs(batchId);
-        setLogs(data);
-      }
-    } catch (error) {
-      console.error(`Error loading ${tab} data:`, error);
+  useEffect(() => {
+    // Start polling if batch is in progress
+    if (progress && ['uploading', 'mapping', 'validating', 'committing'].includes(progress.phase)) {
+      setPolling(true);
+      const interval = setInterval(() => {
+        loadBatchProgress();
+      }, 5000);
+
+      return () => {
+        clearInterval(interval);
+        setPolling(false);
+      };
+    } else {
+      setPolling(false);
     }
-  };
+  }, [progress, loadBatchProgress]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -572,7 +568,7 @@ function PreviewTab({ previewRows, entityType }: { previewRows: PreviewRow[]; en
   );
 }
 
-function ErrorsTab({ errorRows, _entityType }: { errorRows: ErrorRow[]; _entityType: string }) {
+function ErrorsTab({ errorRows }: { errorRows: ErrorRow[] }) {
   if (errorRows.length === 0) {
     return (
       <div className="text-center py-12">
@@ -614,7 +610,7 @@ function ErrorsTab({ errorRows, _entityType }: { errorRows: ErrorRow[]; _entityT
                   Validation Errors:
                 </p>
                 <ul className="text-sm text-red-600 dark:text-red-400 space-y-1">
-                  {row.validation_errors.map((error: any, i: number) => (
+                  {row.validation_errors.map((error: ValidationError, i: number) => (
                     <li key={i}>• {error.field}: {error.message}</li>
                   ))}
                 </ul>

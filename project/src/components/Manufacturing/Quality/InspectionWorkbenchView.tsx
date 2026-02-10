@@ -6,27 +6,20 @@ import {
   XCircle,
   AlertTriangle,
   Search,
-  Filter,
   Clock,
-  User,
   Factory,
 } from 'lucide-react';
 import { QualityExecutionService, InspectionRun, InspectionRunStatus } from '../../../services/QualityExecutionService';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export function InspectionWorkbenchView() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [inspections, setInspections] = useState<InspectionRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<InspectionRunStatus | 'all'>('all');
-  const [selectedInspection, setSelectedInspection] = useState<InspectionRun | null>(null);
 
-  useEffect(() => {
-    loadInspections();
-  }, [statusFilter]);
-
-  const loadInspections = async () => {
+  const loadInspections = useCallback(async () => {
     try {
       setLoading(true);
       const filters: { status?: InspectionRunStatus } = {};
@@ -40,7 +33,11 @@ export function InspectionWorkbenchView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    loadInspections();
+  }, [loadInspections]);
 
   const handleStartInspection = async (runId: string) => {
     if (!user?.id) return;

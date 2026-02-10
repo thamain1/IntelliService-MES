@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Package, Truck, ShoppingCart, Hash, Shield, MapPin, ArrowRightLeft, PackageCheck, Wrench, ClipboardList, PackagePlus } from 'lucide-react';
 import { PartsView } from './PartsView';
 import { VendorsView } from './VendorsView';
@@ -14,6 +14,20 @@ import { PartsPickupView } from './PartsPickupView';
 type TabType = 'catalog' | 'vendors' | 'orders' | 'serialized' | 'locations' | 'warranty' | 'transfers' | 'receiving' | 'requests' | 'pickup';
 type ItemType = 'part' | 'tool';
 
+interface LinkedRequest {
+  request_id: string;
+  ticket_id: string;
+  ticket_number: string;
+  customer_name: string;
+  parts_requested: Array<{
+    line_id: string;
+    part_id: string;
+    part_number: string;
+    part_name: string;
+    quantity_requested: number;
+  }>;
+}
+
 interface PartsManagementViewProps {
   initialView?: string;
   itemType?: ItemType;
@@ -21,10 +35,12 @@ interface PartsManagementViewProps {
 
 export function PartsManagementView({ initialView, itemType = 'part' }: PartsManagementViewProps) {
   const isTool = itemType === 'tool';
-  const _itemLabel = isTool ? 'Tool' : 'Part';
   const itemLabelPlural = isTool ? 'Tools' : 'Parts';
-  const _ItemIcon = isTool ? Wrench : Package;
-  const getInitialTab = (): TabType => {
+  const ItemIcon = isTool ? Wrench : Package;
+
+  const [linkedRequest, setLinkedRequest] = useState<LinkedRequest | null>(null);
+
+  const getInitialTab = useCallback((): TabType => {
     switch (initialView) {
       case 'parts-inventory':
       case 'tools-inventory':
@@ -47,27 +63,13 @@ export function PartsManagementView({ initialView, itemType = 'part' }: PartsMan
       default:
         return 'catalog';
     }
-  };
+  }, [initialView]);
 
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
-  interface LinkedRequest {
-    request_id: string;
-    ticket_id: string;
-    ticket_number: string;
-    customer_name: string;
-    parts_requested: Array<{
-      line_id: string;
-      part_id: string;
-      part_number: string;
-      part_name: string;
-      quantity_requested: number;
-    }>;
-  }
-  const [linkedRequest, setLinkedRequest] = useState<LinkedRequest | null>(null);
 
   useEffect(() => {
     setActiveTab(getInitialTab());
-  }, [initialView]);
+  }, [getInitialTab]);
 
   // Handle creating a PO from a parts request
   const handleCreatePOFromRequest = (request: LinkedRequest) => {

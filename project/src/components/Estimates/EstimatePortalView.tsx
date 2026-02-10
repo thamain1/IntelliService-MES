@@ -8,8 +8,8 @@ interface EstimatePortalProps {
 export function EstimatePortalView({ token }: EstimatePortalProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [estimate, setEstimate] = useState<any>(null);
-  const [linkInfo, setLinkInfo] = useState<any>(null);
+  const [estimate, setEstimate] = useState<Record<string, unknown> | null>(null);
+  const [linkInfo, setLinkInfo] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDecisionForm, setShowDecisionForm] = useState(false);
   const [decisionType, setDecisionType] = useState<'accepted' | 'rejected'>('accepted');
@@ -17,11 +17,7 @@ export function EstimatePortalView({ token }: EstimatePortalProps) {
   const [comment, setComment] = useState('');
   const [confirmChecked, setConfirmChecked] = useState(false);
 
-  useEffect(() => {
-    loadEstimate();
-  }, [token]);
-
-  const loadEstimate = async () => {
+  const loadEstimate = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -49,7 +45,11 @@ export function EstimatePortalView({ token }: EstimatePortalProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadEstimate();
+  }, [loadEstimate]);
 
   const handleDecision = async () => {
     if (!decidedName.trim()) {
@@ -211,9 +211,9 @@ export function EstimatePortalView({ token }: EstimatePortalProps) {
                 Line Items
               </h3>
               <div className="space-y-2">
-                {estimate?.line_items?.map((item: any, index: number) => (
+                {(estimate?.line_items as Array<Record<string, unknown>>)?.map((item, index) => (
                   <div
-                    key={item.id || index}
+                    key={(item.id as string) || index}
                     className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700"
                   >
                     <div className="flex-1">

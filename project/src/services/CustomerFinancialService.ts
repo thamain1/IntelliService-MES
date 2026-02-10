@@ -1,8 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
-type Invoice = Database['public']['Tables']['invoices']['Row'];
-
 export interface CustomerFinancialSummary {
   total_revenue_lifetime: number;
   total_revenue_ytd: number;
@@ -182,7 +180,7 @@ export async function getCustomerInstalledEquipment(
   const locationMap = new Map<string, CustomerEquipmentByLocation>();
 
   for (const item of equipmentList) {
-    const loc = item.customer_locations as any;
+    const loc = item.customer_locations as unknown as { id: string; location_name: string | null; address: string | null; city: string | null; state: string | null; zip_code: string | null };
     const locationId = loc.id;
     const locationName = loc.location_name || 'Unknown Location';
     const locationAddress = [

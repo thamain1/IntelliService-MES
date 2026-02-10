@@ -59,7 +59,7 @@ export function MaterialHandlerView() {
     }
   };
 
-  const handleStartMove = async (moveId: string) => {
+  const _handleStartMove = async (moveId: string) => {
     setActionLoading(moveId);
     try {
       const result = await ManufacturingService.startMove(moveId);

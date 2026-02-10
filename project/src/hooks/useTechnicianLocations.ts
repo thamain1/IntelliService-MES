@@ -68,18 +68,18 @@ export function useTechnicianLocations(
 
           const status = getTechnicianStatus(locationData?.timestamp);
 
-          const activeTickets = (ticketData || []).map((ticket: any) => ({
-            id: ticket.id,
-            ticket_number: ticket.ticket_number,
-            title: ticket.title,
-            status: ticket.status,
-            priority: ticket.priority || 'normal',
-            customer_name: ticket.customer?.name || 'Unknown',
-            customer_address: ticket.customer?.address || null,
-            customer_latitude: ticket.customer?.latitude || null,
-            customer_longitude: ticket.customer?.longitude || null,
-            scheduled_date: ticket.scheduled_date,
-            estimated_duration: ticket.estimated_duration,
+          const activeTickets = (ticketData || []).map((ticket: Record<string, unknown>) => ({
+            id: ticket.id as string,
+            ticket_number: ticket.ticket_number as string,
+            title: ticket.title as string,
+            status: ticket.status as string,
+            priority: (ticket.priority as string) || 'normal',
+            customer_name: (ticket.customer as Record<string, unknown>)?.name || 'Unknown',
+            customer_address: (ticket.customer as Record<string, unknown>)?.address || null,
+            customer_latitude: (ticket.customer as Record<string, unknown>)?.latitude || null,
+            customer_longitude: (ticket.customer as Record<string, unknown>)?.longitude || null,
+            scheduled_date: ticket.scheduled_date as string,
+            estimated_duration: ticket.estimated_duration as number,
           }));
 
           return {
@@ -96,9 +96,9 @@ export function useTechnicianLocations(
 
       setTechnicians(techsWithData);
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading technician locations:', err);
-      setError(err.message || 'Failed to load technician locations');
+      setError(err instanceof Error ? err.message : 'Failed to load technician locations');
     } finally {
       setLoading(false);
     }

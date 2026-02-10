@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { MapPin, AlertCircle, RefreshCw } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { MapPin, AlertCircle } from 'lucide-react';
 import { loadGoogleMaps } from '../../lib/googleMapsLoader';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import type { Database } from '../../lib/database.types';
 import type { TechnicianMapData } from '../../types/map.types';
 import { getStatusColor } from '../../types/map.types';
-import { GeocodingService } from '../../services/GeocodingService';
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customers?: {
@@ -51,8 +49,6 @@ export function CallMapGoogle({
   const [markerClusterer, setMarkerClusterer] = useState<MarkerClusterer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodeProgress, setGeocodeProgress] = useState<string | null>(null);
 
   // Memoize filtered tickets to prevent infinite loop in useEffect
   const activeTickets = useMemo(() => {
@@ -100,61 +96,229 @@ export function CallMapGoogle({
     return technicians.filter(tech => tech.location !== null);
   }, [technicians]);
 
-  // Get unique customer IDs that need geocoding
-  const customerIdsToGeocode = useMemo(() => {
-    return Array.from(
-      new Set(
-        ticketsWithoutCoords
-          .filter(t => t.customer_id)
-          .map(t => t.customer_id!)
-      )
-    );
-  }, [ticketsWithoutCoords]);
-
-  // Geocode missing customer addresses
-  const handleGeocodeCustomers = useCallback(async () => {
-    if (customerIdsToGeocode.length === 0) return;
-
-    setGeocoding(true);
-    setGeocodeProgress(`Starting geocoding for ${customerIdsToGeocode.length} customers...`);
-
-    try {
-      const result = await GeocodingService.batchGeocodeCustomers(
-        customerIdsToGeocode,
-        (completed, total, _current) => {
-          setGeocodeProgress(`Geocoding ${completed}/${total} customers...`);
-        }
-      );
-
-      if (result.successful > 0) {
-        setGeocodeProgress(
-          `Done! ${result.successful} geocoded, ${result.failed} failed. Refreshing map...`
-        );
-        // Trigger a page reload to refresh the data
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        setGeocodeProgress(`Geocoding failed for all ${result.failed} customers.`);
-      }
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      setGeocodeProgress('Geocoding failed. Please try again.');
+  const initializeMap = useCallback(async () => {
+    if (!mapRef.current) {
+      console.error('Map ref is not available');
+      return;
     }
 
-    setGeocoding(false);
-  }, [customerIdsToGeocode]);
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('Loading Google Maps API...');
+      const google = await loadGoogleMaps();
+      console.log('Google Maps API loaded successfully');
+
+      const defaultCenter = { lat: 32.3547, lng: -89.3985 };
+
+      console.log('Creating map instance...');
+      const newMap = new google.maps.Map(mapRef.current, {
+        zoom: 11,
+        center: defaultCenter,
+        mapTypeControl: true,
+        streetViewControl: true,
+        fullscreenControl: true,
+        zoomControl: true,
+        gestureHandling: 'cooperative',
+      });
+
+      console.log('Map instance created successfully');
+      setMap(newMap);
+    } catch (err: unknown) {
+      console.error('Error initializing map:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load Google Maps. Check console for details.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateMarkers = useCallback(async () => {
+    if (!map) return;
+
+    console.log('[Map] Updating markers...');
+    console.log('[Map] Total active tickets:', activeTickets.length);
+    console.log('[Map] Tickets with coords:', ticketsWithCoords.length);
+    console.log('[Map] Technicians with location:', techniciansWithLocation.length);
+
+    const google = await loadGoogleMaps();
+
+    // Clear existing markers
+    if (markerClusterer) {
+      markerClusterer.clearMarkers();
+    }
+
+    ticketMarkers.forEach((marker) => marker.setMap(null));
+    technicianMarkers.forEach((marker) => marker.setMap(null));
+
+    const newTicketMarkers: google.maps.Marker[] = [];
+    const newTechnicianMarkers: google.maps.Marker[] = [];
+    const bounds = new google.maps.LatLngBounds();
+
+    // Create ticket markers
+    if (showTickets) {
+      ticketsWithCoords.forEach((ticket) => {
+        let lat = ticket.latitude;
+        let lng = ticket.longitude;
+
+        // Use customer coordinates as fallback
+        if ((lat === null || lng === null) && ticket.customers) {
+          lat = ticket.customers.latitude;
+          lng = ticket.customers.longitude;
+        }
+
+        if (lat === null || lng === null) {
+          return;
+        }
+
+        const position = {
+          lat: parseFloat(lat.toString()),
+          lng: parseFloat(lng.toString()),
+        };
+
+        const statusColors: Record<string, string> = {
+          open: '#ef4444',
+          scheduled: '#3b82f6',
+          in_progress: '#eab308',
+          completed: '#22c55e',
+          closed_billed: '#10b981',
+        };
+
+        const color = statusColors[ticket.status] || '#6b7280';
+
+        const priorityScales: Record<string, number> = {
+          urgent: 1.5,
+          high: 1.2,
+          normal: 1.0,
+          low: 0.8,
+        };
+
+        const scale = priorityScales[ticket.priority] || 1.0;
+
+        try {
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            title: `${ticket.ticket_number} - ${ticket.title}`,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+              scale: 8 * scale,
+            },
+            zIndex: ticket.priority === 'urgent' ? 1000 : ticket.priority === 'high' ? 900 : 800,
+            optimized: false,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: createTicketInfoWindowContent(ticket),
+          });
+
+          marker.addListener('click', () => {
+            infoWindow.open(map, marker);
+            if (onTicketClick) {
+              onTicketClick(ticket.id);
+            }
+          });
+
+          newTicketMarkers.push(marker);
+          bounds.extend(position);
+        } catch (markerError) {
+          console.error('[Map] Error creating marker for', ticket.ticket_number, ':', markerError);
+        }
+      });
+    }
+
+    // Create technician markers
+    if (showTechnicians) {
+      techniciansWithLocation.forEach((tech) => {
+        if (!tech.location) return;
+
+        const position = {
+          lat: tech.location.latitude,
+          lng: tech.location.longitude,
+        };
+
+        const color = getStatusColor(tech.status);
+        const isSelected = tech.id === selectedTechnicianId;
+
+        try {
+          // Person icon SVG path
+          const personPath = 'M12 2C9.24 2 7 4.24 7 7c0 2.76 2.24 5 5 5s5-2.24 5-5c0-2.76-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z';
+
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            title: tech.full_name,
+            icon: {
+              path: personPath,
+              fillColor: color,
+              fillOpacity: 1,
+              strokeColor: isSelected ? '#000000' : '#ffffff',
+              strokeWeight: isSelected ? 3 : 2,
+              scale: isSelected ? 1.8 : 1.5,
+              anchor: new google.maps.Point(12, 22),
+            },
+            zIndex: 2000, // Technicians always on top
+            optimized: false,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: createTechnicianInfoWindowContent(tech),
+          });
+
+          marker.addListener('click', () => {
+            infoWindow.open(map, marker);
+            if (onTechnicianClick) {
+              onTechnicianClick(tech.id);
+            }
+          });
+
+          newTechnicianMarkers.push(marker);
+          bounds.extend(position);
+        } catch (markerError) {
+          console.error('[Map] Error creating marker for technician', tech.full_name, ':', markerError);
+        }
+      });
+    }
+
+    setTicketMarkers(newTicketMarkers);
+    setTechnicianMarkers(newTechnicianMarkers);
+
+    const allMarkers = [...newTicketMarkers, ...newTechnicianMarkers];
+    console.log('[Map] Created', newTicketMarkers.length, 'ticket markers and', newTechnicianMarkers.length, 'technician markers');
+
+    if (allMarkers.length > 0 && !selectedTechnicianId) {
+      if (allMarkers.length === 1) {
+        const center = allMarkers[0].getPosition();
+        map.setCenter(center!);
+        map.setZoom(14);
+      } else {
+        map.fitBounds(bounds);
+      }
+
+      // Only cluster tickets if there are many
+      if (newTicketMarkers.length > 50) {
+        console.log('[Map] Creating marker clusterer for', newTicketMarkers.length, 'ticket markers');
+        const clusterer = new MarkerClusterer({ map, markers: newTicketMarkers });
+        setMarkerClusterer(clusterer);
+      }
+    }
+  }, [map, activeTickets, techniciansWithLocation, showTickets, showTechnicians, ticketMarkers, technicianMarkers, markerClusterer, selectedTechnicianId, onTicketClick, onTechnicianClick, ticketsWithCoords]);
 
   useEffect(() => {
     console.log('Initializing map from useEffect');
     initializeMap();
-  }, []);
+  }, [initializeMap]);
 
   useEffect(() => {
     if (map) {
       updateMarkers();
     }
-  }, [map, activeTickets, technicians, showTickets, showTechnicians]);
+  }, [map, updateMarkers]);
 
   // Center on selected technician
   useEffect(() => {
@@ -199,14 +363,18 @@ export function CallMapGoogle({
 
       console.log('Map instance created successfully');
       setMap(newMap);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error initializing map:', err);
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      const errorName = err instanceof Error ? err.name : 'Error';
+      
       console.error('Error details:', {
-        message: err.message,
-        stack: err.stack,
-        name: err.name
+        message: errorMsg,
+        stack: errorStack,
+        name: errorName
       });
-      setError(err.message || 'Failed to load Google Maps. Check console for details.');
+      setError(errorMsg || 'Failed to load Google Maps. Check console for details.');
     } finally {
       setLoading(false);
     }

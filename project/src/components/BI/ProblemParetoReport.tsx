@@ -39,11 +39,7 @@ export function ProblemParetoReport() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadParetoData();
-  }, [dateRange]);
-
-  const loadParetoData = async () => {
+  const loadParetoData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -137,7 +133,11 @@ export function ProblemParetoReport() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start, end]);
+
+  useEffect(() => {
+    loadParetoData();
+  }, [loadParetoData]);
 
   const getExportData = (): ExportData | null => {
     if (paretoData.length === 0) return null;
@@ -321,7 +321,7 @@ export function ProblemParetoReport() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {paretoData.map((row, _index) => (
+                  {paretoData.map((row) => (
                     <tr key={row.code} className={row.cumulative_percentage <= 80 ? 'bg-red-50 dark:bg-red-900/10' : ''}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
                         {row.code}

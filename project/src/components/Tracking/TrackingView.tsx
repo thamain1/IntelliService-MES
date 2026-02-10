@@ -21,7 +21,7 @@ interface TechnicianWithLocation extends Profile {
 export function TrackingView() {
   const [technicians, setTechnicians] = useState<TechnicianWithLocation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
+  const [_selectedTechId, setSelectedTechId] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedTech, setSelectedTech] = useState<TechnicianWithLocation | null>(null);
 

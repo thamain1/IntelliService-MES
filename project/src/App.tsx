@@ -71,7 +71,7 @@ function AppContent() {
 
   useEffect(() => {
     const path = window.location.pathname;
-    const portalMatch = path.match(/\/estimate-portal\/([^\/]+)/);
+    const portalMatch = path.match(/\/estimate-portal\/([^/]+)/);
     if (portalMatch) {
       setPortalToken(portalMatch[1]);
     }

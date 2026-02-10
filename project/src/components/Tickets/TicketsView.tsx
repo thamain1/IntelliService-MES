@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Plus,
   Search,
-  Filter,
   Eye,
   Edit,
   Trash2,
@@ -18,6 +17,7 @@ import type { Database } from '../../lib/database.types';
 import { NewTicketModal } from './NewTicketModal';
 import { TicketDetailModal } from '../Dispatch/TicketDetailModal';
 import { TechnicianTicketView } from './TechnicianTicketView';
+import type { LucideIcon } from 'lucide-react';
 
 type TicketAssignment = {
   technician_id: string;
@@ -72,21 +72,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
-  if (profile?.role === 'technician') {
-    return <TechnicianTicketView />;
-  }
-
-  useEffect(() => {
-    loadTickets();
-  }, [profile]);
-
-  useEffect(() => {
-    if (initialFilter && initialFilter !== 'all') {
-      setStatusFilter(initialFilter);
-    }
-  }, [initialFilter]);
-
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       let query = supabase
         .from('tickets')
@@ -106,13 +92,21 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
       }
 
       console.log('Loaded tickets:', data);
-      setTickets(data || []);
+      setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading tickets:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile]);
+
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
+
+  if (profile?.role === 'technician') {
+    return <TechnicianTicketView />;
+  }
 
   const handleDeleteTicket = async (ticketId: string, ticketNumber: string) => {
     if (!confirm(`Are you sure you want to delete ticket ${ticketNumber}? This action cannot be undone.`)) {
@@ -203,8 +197,8 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const getStatusIcon = (status: string) => {
-    const icons: Record<string, any> = {
+  const getStatusIcon = (status: string): LucideIcon => {
+    const icons: Record<string, LucideIcon> = {
       open: AlertCircle,
       scheduled: Clock,
       in_progress: Clock,

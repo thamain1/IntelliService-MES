@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, List, Grid, Clock, X, LayoutGrid, Filter, Package, AlertCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, List, Grid, Clock, X, LayoutGrid, Filter, Package, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { TicketDetailModal } from './TicketDetailModal';
@@ -22,12 +22,7 @@ export function DispatchView() {
   const [heldTicketsCount, setHeldTicketsCount] = useState({ parts: 0, issues: 0 });
   const [holdFilter, setHoldFilter] = useState<HoldFilter | null>(null);
 
-  useEffect(() => {
-    loadTickets();
-    loadHeldTickets();
-  }, [currentDate, holdFilter]);
-
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -54,15 +49,15 @@ export function DispatchView() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setTickets(data || []);
+      setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading tickets:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate, holdFilter]);
 
-  const loadHeldTickets = async () => {
+  const loadHeldTickets = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
@@ -80,7 +75,12 @@ export function DispatchView() {
     } catch (error) {
       console.error('Error loading held tickets:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTickets();
+    loadHeldTickets();
+  }, [loadTickets, loadHeldTickets]);
 
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();

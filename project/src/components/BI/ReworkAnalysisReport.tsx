@@ -55,11 +55,7 @@ export function ReworkAnalysisReport() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadReworkData();
-  }, [dateRange]);
-
-  const loadReworkData = async () => {
+  const loadReworkData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -163,7 +159,7 @@ export function ReworkAnalysisReport() {
 
       // Calculate tech stats
       const techStatsArray: TechReworkStats[] = Object.entries(techCallbacks)
-        .filter(([_id, stats]) => stats.completed > 0)
+        .filter(([, stats]) => stats.completed > 0)
         .map(([id, stats]) => ({
           technician_id: id,
           technician_name: stats.name,
@@ -203,7 +199,11 @@ export function ReworkAnalysisReport() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start, end]);
+
+  useEffect(() => {
+    loadReworkData();
+  }, [loadReworkData]);
 
   const getExportData = (): ExportData | null => {
     if (reworkData.length === 0) return null;

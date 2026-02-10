@@ -27,21 +27,7 @@ export function VendorPaymentHistoryView({ vendorId }: VendorPaymentHistoryViewP
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  useEffect(() => {
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    setDateFrom(ninetyDaysAgo.toISOString().split('T')[0]);
-    setDateTo(new Date().toISOString().split('T')[0]);
-  }, []);
-
-  useEffect(() => {
-    if (dateFrom && dateTo) {
-      loadVendors();
-      loadPaymentHistory();
-    }
-  }, [vendorId, selectedVendor, selectedStatus, dateFrom, dateTo]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -50,13 +36,13 @@ export function VendorPaymentHistoryView({ vendorId }: VendorPaymentHistoryViewP
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as unknown as VendorOption[]) || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     }
-  };
+  }, []);
 
-  const loadPaymentHistory = async () => {
+  const loadPaymentHistory = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -88,7 +74,21 @@ export function VendorPaymentHistoryView({ vendorId }: VendorPaymentHistoryViewP
     } finally {
       setLoading(false);
     }
-  };
+  }, [vendorId, selectedVendor, selectedStatus, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    setDateFrom(ninetyDaysAgo.toISOString().split('T')[0]);
+    setDateTo(new Date().toISOString().split('T')[0]);
+  }, []);
+
+  useEffect(() => {
+    if (dateFrom && dateTo) {
+      loadVendors();
+      loadPaymentHistory();
+    }
+  }, [loadVendors, loadPaymentHistory, dateFrom, dateTo]);
 
   const getStatusBadge = (record: PaymentHistoryRecord) => {
     if (record.documentType === 'payment') {

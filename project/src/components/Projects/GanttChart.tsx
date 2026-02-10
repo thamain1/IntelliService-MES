@@ -229,7 +229,7 @@ export function GanttChart({ phases, tasks, projectStartDate, projectEndDate }: 
               </div>
             )}
 
-            {items.map((item, _idx) => (
+            {items.map((item) => (
               <div
                 key={item.id}
                 className={`flex border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${

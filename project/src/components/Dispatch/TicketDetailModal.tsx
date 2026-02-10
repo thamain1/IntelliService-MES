@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Clock, User, Calendar, MapPin, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle, Factory } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Clock, User, Calendar, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle, Factory } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CodeSelector } from '../CRM/CodeSelector';
 import { useFeature } from '../../hooks/useFeature';
@@ -15,6 +15,12 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
     equipment_type: string;
     serial_number: string;
   };
+  problem_code?: string | null;
+  resolution_code?: string | null;
+  site_contact_name?: string | null;
+  site_contact_phone?: string | null;
+  sales_opportunity_flag?: boolean;
+  urgent_review_flag?: boolean;
 };
 
 type Part = Database['public']['Tables']['parts']['Row'];
@@ -72,15 +78,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
     summary: '',
   });
 
-  useEffect(() => {
-    if (isOpen && ticketId) {
-      loadTicket();
-      loadAssignments();
-      loadTechnicians();
-    }
-  }, [isOpen, ticketId]);
-
-  const loadTicket = async () => {
+  const loadTicket = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
@@ -95,14 +93,15 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
       if (error) throw error;
       if (data) {
-        setTicket(data);
-        setHoursOnsite(data.hours_onsite?.toString() || '');
-        setStatus(data.status);
-        setProblemCode((data as any).problem_code || null);
-        setResolutionCode((data as any).resolution_code || null);
+        const ticketData = data as unknown as Ticket;
+        setTicket(ticketData);
+        setHoursOnsite(ticketData.hours_onsite?.toString() || '');
+        setStatus(ticketData.status);
+        setProblemCode(ticketData.problem_code || null);
+        setResolutionCode(ticketData.resolution_code || null);
         // Format date for datetime-local input (YYYY-MM-DDTHH:MM)
-        if (data.scheduled_date) {
-          const date = new Date(data.scheduled_date);
+        if (ticketData.scheduled_date) {
+          const date = new Date(ticketData.scheduled_date);
           const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
           setScheduledDate(localDate.toISOString().slice(0, 16));
         } else {
@@ -114,9 +113,9 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticketId]);
 
-  const loadAssignments = async () => {
+  const loadAssignments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('ticket_assignments')
@@ -129,14 +128,14 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
       if (error) throw error;
       if (data) {
-        setAssignments(data);
+        setAssignments((data as unknown as TicketAssignment[]));
       }
     } catch (error) {
       console.error('Error loading assignments:', error);
     }
-  };
+  }, [ticketId]);
 
-  const loadTechnicians = async () => {
+  const loadTechnicians = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -147,12 +146,20 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
       if (error) throw error;
       if (data) {
-        setTechnicians(data);
+        setTechnicians((data as unknown as Profile[]));
       }
     } catch (error) {
       console.error('Error loading technicians:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && ticketId) {
+      loadTicket();
+      loadAssignments();
+      loadTechnicians();
+    }
+  }, [isOpen, ticketId, loadTicket, loadAssignments, loadTechnicians]);
 
   const handleAddAssignment = async () => {
     if (!newAssignment.technician_id) {
@@ -213,7 +220,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
         .order('name');
 
       if (error) throw error;
-      if (data) setParts(data);
+      if (data) setParts(data as unknown as Part[]);
     } catch (error) {
       console.error('Error loading parts:', error);
     }
@@ -227,7 +234,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
     setSaving(true);
     try {
-      const { data, error } = await supabase.rpc('fn_ticket_hold_for_parts', {
+      const { error } = await supabase.rpc('fn_ticket_hold_for_parts', {
         p_ticket_id: ticketId,
         p_urgency: partsRequest.urgency,
         p_notes: partsRequest.notes,
@@ -242,9 +249,10 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
       setPartsRequest({ urgency: 'medium', notes: '', summary: '', parts: [] });
       loadTicket();
       onUpdate();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating parts hold:', error);
-      alert(error?.message || 'Failed to place ticket on hold. Please try again.');
+      const errorMessage = (error as { message?: string })?.message || 'Failed to place ticket on hold. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -258,7 +266,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
     setSaving(true);
     try {
-      const { data, error } = await supabase.rpc('fn_ticket_report_issue', {
+      const { error } = await supabase.rpc('fn_ticket_report_issue', {
         p_ticket_id: ticketId,
         p_category: issueReport.category,
         p_severity: issueReport.severity,
@@ -274,9 +282,10 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
       setIssueReport({ category: 'other', severity: 'medium', description: '', summary: '' });
       loadTicket();
       onUpdate();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reporting issue:', error);
-      alert(error?.message || 'Failed to report issue. Please try again.');
+      const errorMessage = (error as { message?: string })?.message || 'Failed to report issue. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -287,7 +296,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
     setSaving(true);
     try {
-      const { data, error } = await supabase.rpc('fn_ticket_resume', {
+      const { error } = await supabase.rpc('fn_ticket_resume', {
         p_ticket_id: ticketId,
         p_resolution_notes: null,
       });
@@ -297,9 +306,10 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
       alert('Ticket resumed from hold');
       loadTicket();
       onUpdate();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error resuming ticket:', error);
-      alert(error?.message || 'Failed to resume ticket. Please try again.');
+      const errorMessage = (error as { message?: string })?.message || 'Failed to resume ticket. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -312,9 +322,9 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
     });
   };
 
-  const updatePartInRequest = (index: number, field: string, value: any) => {
+  const updatePartInRequest = (index: number, field: string, value: string | number | null) => {
     const updated = [...partsRequest.parts];
-    updated[index] = { ...updated[index], [field]: value };
+    (updated[index] as unknown as Record<string, unknown>)[field] = value;
     setPartsRequest({ ...partsRequest, parts: updated });
   };
 
@@ -348,7 +358,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
     setSaving(true);
     try {
-      const updates: any = {
+      const updates: Record<string, unknown> = {
         status,
         hours_onsite: hoursOnsite ? parseFloat(hoursOnsite) : null,
         problem_code: problemCode,
@@ -398,9 +408,9 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
 
       onUpdate();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating ticket:', error);
-      const errorMessage = error?.message || 'Failed to update ticket. Please try again.';
+      const errorMessage = (error as { message?: string })?.message || 'Failed to update ticket. Please try again.';
       alert(errorMessage);
     } finally {
       setSaving(false);
@@ -489,15 +499,15 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       {ticket.customers?.address && `${ticket.customers.address}, ${ticket.customers.city}, ${ticket.customers.state}`}
                     </p>
-                    {((ticket as any).site_contact_name || (ticket as any).site_contact_phone) && (
+                    {(ticket.site_contact_name || ticket.site_contact_phone) && (
                       <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Site Contact</p>
-                        {(ticket as any).site_contact_name && (
-                          <p className="text-sm text-gray-900 dark:text-white">{(ticket as any).site_contact_name}</p>
+                        {ticket.site_contact_name && (
+                          <p className="text-sm text-gray-900 dark:text-white">{ticket.site_contact_name}</p>
                         )}
-                        {(ticket as any).site_contact_phone && (
-                          <a href={`tel:${(ticket as any).site_contact_phone}`} className="text-sm text-blue-600 hover:underline">
-                            {(ticket as any).site_contact_phone}
+                        {ticket.site_contact_phone && (
+                          <a href={`tel:${ticket.site_contact_phone}`} className="text-sm text-blue-600 hover:underline">
+                            {ticket.site_contact_phone}
                           </a>
                         )}
                       </div>
@@ -711,35 +721,35 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
             </div>
 
             {/* Problem and Resolution Codes */}
-            {((ticket as any).problem_code || (ticket as any).resolution_code) && (
+            {(ticket.problem_code || ticket.resolution_code) && (
               <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-indigo-800 dark:text-indigo-200 mb-3 flex items-center">
                   <Tag className="w-4 h-4 mr-2" />
                   Diagnostic Codes
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(ticket as any).problem_code && (
+                  {ticket.problem_code && (
                     <div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Problem Found</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{(ticket as any).problem_code}</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{ticket.problem_code}</p>
                     </div>
                   )}
-                  {(ticket as any).resolution_code && (
+                  {ticket.resolution_code && (
                     <div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Resolution Applied</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{(ticket as any).resolution_code}</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{ticket.resolution_code}</p>
                     </div>
                   )}
                 </div>
                 {/* Show flags if set */}
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {(ticket as any).sales_opportunity_flag && (
+                  {ticket.sales_opportunity_flag && (
                     <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs font-medium rounded">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       Sales Opportunity
                     </span>
                   )}
-                  {(ticket as any).urgent_review_flag && (
+                  {ticket.urgent_review_flag && (
                     <span className="inline-flex items-center px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-xs font-medium rounded">
                       <AlertTriangle className="w-3 h-3 mr-1" />
                       Urgent Review Required
@@ -929,7 +939,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                 </label>
                 <select
                   value={partsRequest.urgency}
-                  onChange={(e) => setPartsRequest({ ...partsRequest, urgency: e.target.value as any })}
+                  onChange={(e) => setPartsRequest({ ...partsRequest, urgency: e.target.value as 'low' | 'medium' | 'high' | 'critical' })}
                   className="input"
                 >
                   <option value="low">Low</option>
@@ -1089,7 +1099,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                   </label>
                   <select
                     value={issueReport.category}
-                    onChange={(e) => setIssueReport({ ...issueReport, category: e.target.value as any })}
+                    onChange={(e) => setIssueReport({ ...issueReport, category: e.target.value as 'equipment_failure' | 'access_denied' | 'safety_concern' | 'scope_change' | 'customer_unavailable' | 'technical_limitation' | 'other' })}
                     className="input"
                   >
                     <option value="equipment_failure">Equipment Failure</option>
@@ -1108,7 +1118,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                   </label>
                   <select
                     value={issueReport.severity}
-                    onChange={(e) => setIssueReport({ ...issueReport, severity: e.target.value as any })}
+                    onChange={(e) => setIssueReport({ ...issueReport, severity: e.target.value as 'low' | 'medium' | 'high' | 'critical' })}
                     className="input"
                   >
                     <option value="low">Low</option>
@@ -1168,7 +1178,7 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
           ticketNumber={ticket.ticket_number}
           ticketTitle={ticket.title}
           onClose={() => setShowSendToShopModal(false)}
-          onSuccess={(orderId) => {
+          onSuccess={(_orderId) => {
             setShowSendToShopModal(false);
             alert(`Production order created successfully!`);
             onUpdate();

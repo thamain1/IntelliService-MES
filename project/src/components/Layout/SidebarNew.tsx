@@ -5,7 +5,6 @@ import {
   LogOut,
   Moon,
   Sun,
-  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { navigationConfig, NavigationItem, NavigationGroup } from '../../config/navigationConfig';

@@ -39,19 +39,7 @@ export function CustomerDetailModal({ customer, onClose, onEdit, onDelete }: Cus
   const [financials, setFinancials] = useState<CustomerFinancialSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (activeTab === 'history') {
-      loadServiceHistory();
-    } else if (activeTab === 'parts') {
-      loadInstalledParts();
-    } else if (activeTab === 'equipment') {
-      loadInstalledEquipment();
-    } else if (activeTab === 'financials') {
-      loadFinancials();
-    }
-  }, [activeTab, customer.id]);
-
-  const loadServiceHistory = async () => {
+  const loadServiceHistory = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -61,15 +49,15 @@ export function CustomerDetailModal({ customer, onClose, onEdit, onDelete }: Cus
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTickets(data || []);
+      setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading service history:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [customer.id]);
 
-  const loadInstalledParts = async () => {
+  const loadInstalledParts = useCallback(async () => {
     console.log('Loading installed parts for customer:', customer.id);
     setLoading(true);
     try {
@@ -81,16 +69,16 @@ export function CustomerDetailModal({ customer, onClose, onEdit, onDelete }: Cus
 
       if (error) throw error;
       console.log('Installed parts loaded:', data?.length || 0);
-      setInstalledParts(data || []);
+      setInstalledParts((data as unknown as InstalledPart[]) || []);
     } catch (error) {
       console.error('Error loading installed parts:', error);
       alert('Error loading installed parts: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [customer.id]);
 
-  const loadInstalledEquipment = async () => {
+  const loadInstalledEquipment = useCallback(async () => {
     setLoading(true);
     try {
       const equipment = await getCustomerInstalledEquipment(customer.id);
@@ -100,9 +88,9 @@ export function CustomerDetailModal({ customer, onClose, onEdit, onDelete }: Cus
     } finally {
       setLoading(false);
     }
-  };
+  }, [customer.id]);
 
-  const loadFinancials = async () => {
+  const loadFinancials = useCallback(async () => {
     setLoading(true);
     try {
       const summary = await getCustomerFinancialSummary(customer.id);
@@ -112,7 +100,19 @@ export function CustomerDetailModal({ customer, onClose, onEdit, onDelete }: Cus
     } finally {
       setLoading(false);
     }
-  };
+  }, [customer.id]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadServiceHistory();
+    } else if (activeTab === 'parts') {
+      loadInstalledParts();
+    } else if (activeTab === 'equipment') {
+      loadInstalledEquipment();
+    } else if (activeTab === 'financials') {
+      loadFinancials();
+    }
+  }, [activeTab, loadServiceHistory, loadInstalledParts, loadInstalledEquipment, loadFinancials]);
 
   const getStatusBadge = (status: string) => {
     const badges = {

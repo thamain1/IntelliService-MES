@@ -23,7 +23,6 @@ export function PartsReceivingView({ itemType = 'part', onNavigateToOrders }: Pa
   const isTool = itemType === 'tool';
   const itemLabel = isTool ? 'Tool' : 'Part';
   const itemLabelPlural = isTool ? 'Tools' : 'Parts';
-  const ItemIcon = isTool ? Wrench : Package;
   const [searchTerm, setSearchTerm] = useState('');
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderWithVendor[]>([]);
   const [loading, setLoading] = useState(true);

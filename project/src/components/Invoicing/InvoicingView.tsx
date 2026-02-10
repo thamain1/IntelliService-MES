@@ -46,13 +46,7 @@ export function InvoicingView() {
     customer_notes: '',
   });
 
-  useEffect(() => {
-    loadInvoices();
-    loadCustomers();
-    loadTickets();
-  }, []);
-
-  const loadInvoices = async () => {
+  const loadInvoices = useCallback(async () => {
     try {
       console.log('Starting to load invoices...');
 
@@ -76,18 +70,18 @@ export function InvoicingView() {
       }
 
       // Load customer and ticket data separately
-      const customerIds = [...new Set(data.map(inv => inv.customer_id).filter(Boolean))];
-      const ticketIds = [...new Set(data.map(inv => inv.ticket_id).filter(Boolean))];
+      const customerIds: string[] = [...new Set(data.map(inv => inv.customer_id).filter((id): id is string => !!id))];
+      const ticketIds: string[] = [...new Set(data.map(inv => inv.ticket_id).filter((id): id is string => !!id))];
 
       const { data: customersData } = await supabase
         .from('customers')
         .select('id, name')
-        .in('id', customerIds);
+        .in('id', customerIds.length > 0 ? customerIds : ['']);
 
       const { data: ticketsData } = await supabase
         .from('tickets')
         .select('id, title')
-        .in('id', ticketIds);
+        .in('id', ticketIds.length > 0 ? ticketIds : ['']);
 
       // Map the data
       const customersMap = new Map(customersData?.map(c => [c.id, c]) || []);
@@ -100,16 +94,17 @@ export function InvoicingView() {
       }));
 
       console.log('Invoices with relations:', invoicesWithRelations);
-      setInvoices(invoicesWithRelations);
-    } catch (error: any) {
+      setInvoices(invoicesWithRelations as unknown as Invoice[]);
+    } catch (error: unknown) {
       console.error('Error loading invoices:', error);
-      console.error('Error details:', error?.message, error?.details, error?.hint);
+      const err = error as { message?: string; details?: string; hint?: string };
+      console.error('Error details:', err.message, err.details, err.hint);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('customers')
@@ -117,13 +112,13 @@ export function InvoicingView() {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setCustomers(data || []);
+      setCustomers((data as unknown as Customer[]) || []);
     } catch (error) {
       console.error('Error loading customers:', error);
     }
-  };
+  }, []);
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
@@ -133,11 +128,17 @@ export function InvoicingView() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTickets(data || []);
+      setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading tickets:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadInvoices();
+    loadCustomers();
+    loadTickets();
+  }, [loadInvoices, loadCustomers, loadTickets]);
 
   const generateInvoiceNumber = () => {
     const date = new Date();
@@ -173,9 +174,9 @@ export function InvoicingView() {
     }]);
   };
 
-  const updateLineItem = (index: number, field: string, value: any) => {
+  const updateLineItem = (index: number, field: string, value: string | number | boolean) => {
     const updated = [...lineItems];
-    updated[index] = { ...updated[index], [field]: value };
+    (updated[index] as unknown as Record<string, string | number | boolean>)[field] = value;
     setLineItems(updated);
   };
 
@@ -313,7 +314,13 @@ export function InvoicingView() {
       console.log('Parts used found:', partsUsed);
 
       // Fetch part details separately
-      let partsDetails: any[] = [];
+      interface PartDetail {
+        id: string;
+        name: string;
+        part_number: string;
+        unit_price: number;
+      }
+      let partsDetails: PartDetail[] = [];
       if (partsUsed && partsUsed.length > 0) {
         const partIds = partsUsed.map(pu => pu.part_id);
         console.log('Fetching part details for IDs:', partIds);
@@ -327,7 +334,7 @@ export function InvoicingView() {
           console.error('Parts details fetch error:', partsDetailError);
         } else {
           console.log('Parts details fetched:', parts);
-          partsDetails = parts || [];
+          partsDetails = (parts as unknown as PartDetail[]) || [];
         }
       }
 
@@ -340,7 +347,14 @@ export function InvoicingView() {
       });
 
       // Auto-populate line items
-      const items: any[] = [];
+      interface LineItem {
+        item_type: string;
+        description: string;
+        quantity: number;
+        unit_price: number;
+        taxable: boolean;
+      }
+      const items: LineItem[] = [];
 
       // Add labor if hours_onsite exists
       if (ticket.hours_onsite && ticket.hours_onsite > 0) {
@@ -365,7 +379,7 @@ export function InvoicingView() {
       // Add parts used
       console.log('Processing parts - partsUsed length:', partsUsed?.length, 'partsDetails length:', partsDetails.length);
       if (partsUsed && partsUsed.length > 0 && partsDetails.length > 0) {
-        partsUsed.forEach((partUsed: any) => {
+        partsUsed.forEach((partUsed: { part_id: string; quantity: number | null }) => {
           const partDetail = partsDetails.find(p => p.id === partUsed.part_id);
           console.log('Looking for part:', partUsed.part_id, 'Found:', partDetail);
           if (partDetail) {
@@ -394,10 +408,11 @@ export function InvoicingView() {
       }
 
       setLineItems(items);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading ticket details:', error);
-      console.error('Error details:', error?.message, error?.details, error?.hint);
-      alert(`Failed to load ticket details: ${error?.message || 'Unknown error'}. Please try again.`);
+      const err = error as { message?: string; details?: string; hint?: string };
+      console.error('Error details:', err?.message, err?.details, err?.hint);
+      alert(`Failed to load ticket details: ${err?.message || 'Unknown error'}. Please try again.`);
     }
   };
 
@@ -418,7 +433,7 @@ export function InvoicingView() {
 
   const updateInvoiceStatus = async (invoiceId: string, newStatus: string) => {
     try {
-      const updates: any = { status: newStatus };
+      const updates: Record<string, unknown> = { status: newStatus };
 
       if (newStatus === 'paid') {
         updates.paid_date = new Date().toISOString().split('T')[0];
@@ -1062,15 +1077,11 @@ function InvoiceDetailModal({
   onUpdateStatus: (id: string, status: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const [lineItems, setLineItems] = useState<any[]>([]);
+  const [lineItems, setLineItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
-  useEffect(() => {
-    loadLineItems();
-  }, [invoice.id]);
-
-  const loadLineItems = async () => {
+  const loadLineItems = useCallback(async () => {
     try {
       console.log('Loading line items for invoice:', invoice.id);
       const { data, error } = await supabase
@@ -1090,7 +1101,11 @@ function InvoiceDetailModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [invoice.id]);
+
+  useEffect(() => {
+    loadLineItems();
+  }, [loadLineItems]);
 
   const handlePrint = () => {
     window.print();

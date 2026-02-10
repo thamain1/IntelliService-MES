@@ -35,9 +35,9 @@ export function LaborEfficiencyInsight() {
 
   useEffect(() => {
     loadMetrics();
-  }, [dateRange]);
+  }, [loadMetrics]);
 
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -133,7 +133,7 @@ export function LaborEfficiencyInsight() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start, end]);
 
   const getExportData = useCallback((): ExportData => {
     return {

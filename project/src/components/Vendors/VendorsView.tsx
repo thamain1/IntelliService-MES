@@ -65,15 +65,7 @@ export function VendorsView({ initialTab = 'list', onViewChange }: VendorsViewPr
 
   const activeTab = initialTab;
 
-  useEffect(() => {
-    loadVendors();
-  }, []);
-
-  useEffect(() => {
-    filterVendors();
-  }, [vendors, searchTerm, statusFilter, preferredFilter]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -81,15 +73,15 @@ export function VendorsView({ initialTab = 'list', onViewChange }: VendorsViewPr
         .order('display_name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as unknown as Vendor[]) || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filterVendors = () => {
+  const filterVendors = useCallback(() => {
     let filtered = vendors;
 
     if (searchTerm) {
@@ -112,10 +104,18 @@ export function VendorsView({ initialTab = 'list', onViewChange }: VendorsViewPr
     }
 
     setFilteredVendors(filtered);
-  };
+  }, [vendors, searchTerm, statusFilter, preferredFilter]);
+
+  useEffect(() => {
+    loadVendors();
+  }, [loadVendors]);
+
+  useEffect(() => {
+    filterVendors();
+  }, [filterVendors]);
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { className: string; icon: any }> = {
+    const badges: Record<string, { className: string; icon: React.ComponentType<{ className?: string }> }> = {
       active: { className: 'badge badge-green', icon: CheckCircle },
       pending: { className: 'badge badge-yellow', icon: Clock },
       on_hold: { className: 'badge badge-orange', icon: AlertCircle },

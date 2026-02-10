@@ -77,11 +77,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
   const [equipmentData, setEquipmentData] = useState<EquipmentReliability[]>([]);
   const [techData, setTechData] = useState<TechQuality[]>([]);
 
-  useEffect(() => {
-    loadData();
-  }, [activeView]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       switch (activeView) {
@@ -91,7 +87,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .select('*')
             .order('ticket_count', { ascending: false })
             .limit(20);
-          setParetoData(pareto || []);
+          setParetoData((pareto as unknown as ParetoItem[]) || []);
           break;
         }
         case 'callbacks': {
@@ -100,7 +96,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .select('*')
             .order('callback_date', { ascending: false })
             .limit(50);
-          setReworkData(rework || []);
+          setReworkData((rework as unknown as ReworkItem[]) || []);
           break;
         }
         case 'equipment': {
@@ -109,7 +105,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .select('*')
             .order('avg_days_between_failures', { ascending: true })
             .limit(50);
-          setEquipmentData(equipment || []);
+          setEquipmentData((equipment as unknown as EquipmentReliability[]) || []);
           break;
         }
         case 'techs': {
@@ -117,7 +113,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
             .from('vw_technician_quality')
             .select('*')
             .order('callback_rate', { ascending: false });
-          setTechData(techs || []);
+          setTechData((techs as unknown as TechQuality[]) || []);
           break;
         }
       }
@@ -126,7 +122,11 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeView]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const views = [
     { id: 'pareto' as const, label: 'Problem Analysis', icon: PieChart },
@@ -136,7 +136,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
   ];
 
   const getMaxTicketCount = () => {
-    return Math.max(...paretoData.map((p) => p.ticket_count), 1);
+    return Math.max(...paretoData.map((p) => p.ticket_count ?? 0), 1);
   };
 
   const renderParetoView = () => (
@@ -169,8 +169,8 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {paretoData.map((item, _index) => (
-                <tr key={item.code} className={item.cumulative_percentage <= 80 ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
+              {paretoData.map((item, __index) => (
+                <tr key={item.code} className={(item.cumulative_percentage || 0) <= 80 ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
                   <td className="px-4 py-3">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">{item.label || item.code}</p>
@@ -183,13 +183,13 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
-                    {item.ticket_count}
+                    {item.ticket_count || 0}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-500">
                     {item.percentage_of_total?.toFixed(1)}%
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span className={item.cumulative_percentage <= 80 ? 'font-medium text-yellow-600' : 'text-gray-500'}>
+                    <span className={(item.cumulative_percentage || 0) <= 80 ? 'font-medium text-yellow-600' : 'text-gray-500'}>
                       {item.cumulative_percentage?.toFixed(1)}%
                     </span>
                   </td>
@@ -197,7 +197,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${(item.ticket_count / getMaxTicketCount()) * 100}%` }}
+                        style={{ width: `${((item.ticket_count || 0) / getMaxTicketCount()) * 100}%` }}
                       />
                     </div>
                   </td>
@@ -291,7 +291,7 @@ export function AnalyticsDashboard({ initialView }: AnalyticsDashboardProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {equipmentData.map((item, _index) => (
+              {equipmentData.map((item, __index) => (
                 <tr key={`${item.manufacturer}-${item.model_number}`}>
                   <td className="px-4 py-3">
                     <div>

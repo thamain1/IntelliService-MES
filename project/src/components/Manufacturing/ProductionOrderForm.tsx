@@ -3,8 +3,20 @@ import { X, Factory } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ManufacturingService, CreateProductionOrderInput } from '../../services/ManufacturingService';
 
+interface ProductionOrder {
+  title?: string;
+  description?: string;
+  priority?: number;
+  customer_id?: string;
+  assigned_to?: string;
+  scheduled_start?: string;
+  scheduled_end?: string;
+  quantity_ordered?: number;
+  ticket_id?: string;
+}
+
 interface ProductionOrderFormProps {
-  order?: any;
+  order?: ProductionOrder;
   ticketId?: string;
   onClose: () => void;
   onSave: () => void;

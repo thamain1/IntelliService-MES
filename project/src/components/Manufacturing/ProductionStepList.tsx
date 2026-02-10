@@ -7,11 +7,9 @@ import {
   Trash2,
   Clock,
   Layers,
-  GripVertical,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ManufacturingService, ProductionStep, CreateProductionStepInput } from '../../services/ManufacturingService';
-import { supabase } from '../../lib/supabase';
 import { useEffect } from 'react';
 
 interface WorkCenter {

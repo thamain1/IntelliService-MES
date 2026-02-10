@@ -53,22 +53,7 @@ export function SendEstimateModal({
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      // Clear previous state
-      setPortalUrl(null);
-      setDeliveryHistory([]);
-      setError(null);
-      setSuccess(null);
-      setCopied(false);
-
-      // Load fresh data
-      loadContacts();
-      loadDeliveryHistory();
-    }
-  }, [isOpen, estimateId]);
-
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('customer_contacts')
@@ -78,7 +63,7 @@ export function SendEstimateModal({
         .order('is_primary', { ascending: false });
 
       if (error) throw error;
-      setContacts(data || []);
+      setContacts((data as unknown as CustomerContact[]) || []);
 
       if (data && data.length > 0 && data[0].is_primary) {
         setSelectedContactId(data[0].id);
@@ -86,9 +71,9 @@ export function SendEstimateModal({
     } catch (err) {
       console.error('Error loading contacts:', err);
     }
-  };
+  }, [customerId]);
 
-  const loadDeliveryHistory = async () => {
+  const loadDeliveryHistory = useCallback(async () => {
     try {
       const { data: links } = await supabase
         .from('estimate_public_links')
@@ -124,11 +109,26 @@ export function SendEstimateModal({
         .limit(10);
 
       if (error) throw error;
-      setDeliveryHistory(data || []);
+      setDeliveryHistory((data as unknown as DeliveryAttempt[]) || []);
     } catch (err) {
       console.error('Error loading delivery history:', err);
     }
-  };
+  }, [estimateId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Clear previous state
+      setPortalUrl(null);
+      setDeliveryHistory([]);
+      setError(null);
+      setSuccess(null);
+      setCopied(false);
+
+      // Load fresh data
+      loadContacts();
+      loadDeliveryHistory();
+    }
+  }, [isOpen, loadContacts, loadDeliveryHistory]);
 
   const handleSend = async () => {
     if (!sendEmail && !sendSMS) {

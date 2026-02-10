@@ -19,11 +19,7 @@ export function DowntimeParetoChart({
   const [paretoData, setParetoData] = useState<DowntimeParetoItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadParetoData();
-  }, [workCenterId, fromDate, toDate, paretoView]);
-
-  const loadParetoData = async () => {
+  const loadParetoData = useCallback(async () => {
     try {
       setLoading(true);
       let data: DowntimeParetoItem[] = [];
@@ -46,7 +42,11 @@ export function DowntimeParetoChart({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workCenterId, fromDate, toDate, paretoView]);
+
+  useEffect(() => {
+    loadParetoData();
+  }, [loadParetoData]);
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${Math.round(minutes)}m`;
@@ -191,7 +191,7 @@ export function DowntimeParetoChart({
               <div className="flex items-center justify-between text-sm text-gray-500">
                 <span>Cumulative Impact</span>
                 <div className="flex items-center space-x-2">
-                  {paretoData.map((item, index) => (
+                  {paretoData.map((item) => (
                     <div
                       key={item.key}
                       className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs"

@@ -27,17 +27,13 @@ interface DepositRelease {
 }
 
 export function DepositReleasePanel({ projectId }: DepositReleasePanelProps) {
-  const { profile: _profile } = useAuth();
+  useAuth();
   const [summary, setSummary] = useState<DepositSummary | null>(null);
   const [releases, setReleases] = useState<DepositRelease[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReleaseModal, setShowReleaseModal] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [projectId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const depositSummary = await MilestoneInvoiceService.getProjectDepositSummary(projectId);
       setSummary(depositSummary);
@@ -49,13 +45,17 @@ export function DepositReleasePanel({ projectId }: DepositReleasePanelProps) {
         .order('release_date', { ascending: false });
 
       if (releasesError) throw releasesError;
-      setReleases(releasesData || []);
+      setReleases((releasesData as unknown as DepositRelease[]) || []);
     } catch (error) {
       console.error('Error loading deposit data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const formatCurrency = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '$0.00';

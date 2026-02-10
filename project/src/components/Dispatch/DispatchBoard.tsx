@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Clock, User, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
@@ -44,11 +44,7 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
   const [draggedTicket, setDraggedTicket] = useState<Ticket | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [selectedDate]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const startOfDay = new Date(selectedDate);
       startOfDay.setHours(0, 0, 0, 0);
@@ -79,15 +75,19 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
       if (unscheduledTicketsResult.error) throw unscheduledTicketsResult.error;
       if (techsResult.error) throw techsResult.error;
 
-      const allTickets = [...(scheduledTicketsResult.data || []), ...(unscheduledTicketsResult.data || [])];
-      setTickets(allTickets);
+      const allTickets = [...((scheduledTicketsResult.data as Ticket[]) || []), ...((unscheduledTicketsResult.data as Ticket[]) || [])];
+      setTickets(allTickets as Ticket[]);
       setTechnicians(techsResult.data || []);
     } catch (error) {
       console.error('Error loading dispatch board data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const previousDay = () => {
     const newDate = new Date(selectedDate);
@@ -141,14 +141,15 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
       }
 
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating ticket:', error);
       let errorMessage = 'Failed to assign ticket. Please try again.';
-      if (error?.message) {
-        if (error.message.includes('permission denied') || error.message.includes('policy') || error.code === 'PGRST116') {
+      const err = error as { message?: string; code?: string };
+      if (err?.message) {
+        if (err.message.includes('permission denied') || err.message.includes('policy') || err.code === 'PGRST116') {
           errorMessage = 'You do not have permission to update this ticket. Please contact your administrator.';
         } else {
-          errorMessage = `Failed to assign ticket: ${error.message}`;
+          errorMessage = `Failed to assign ticket: ${err.message}`;
         }
       }
       alert(errorMessage);
@@ -261,10 +262,10 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
                   draggable
                   onDragStart={() => handleDragStart(ticket)}
                   onClick={() => setSelectedTicketId(ticket.id)}
-                  className={`${getPriorityBorder(ticket.priority)} p-3 bg-white dark:bg-gray-800 rounded-lg cursor-move hover:shadow-md transition-shadow select-none`}
+                  className={`${getPriorityBorder(ticket.priority ?? '')} p-3 bg-white dark:bg-gray-800 rounded-lg cursor-move hover:shadow-md transition-shadow select-none`}
                 >
                   <div className="flex items-center space-x-2 mb-1">
-                    <div className={`w-2 h-2 rounded-full ${getStatusColor(ticket.status)}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(ticket.status ?? '')}`}></div>
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">
                       {ticket.ticket_number}
                     </span>
@@ -346,13 +347,13 @@ export function DispatchBoard({ selectedDate, onDateChange }: DispatchBoardProps
                           draggable
                           onDragStart={() => handleDragStart(hourTickets[0])}
                           onClick={() => setSelectedTicketId(hourTickets[0].id)}
-                          className={`${getPriorityBorder(hourTickets[0].priority)} absolute inset-x-1 bg-blue-100 dark:bg-blue-900/30 rounded p-2 cursor-move hover:shadow-md transition-shadow z-10 select-none`}
+                          className={`${getPriorityBorder(hourTickets[0].priority ?? '')} absolute inset-x-1 bg-blue-100 dark:bg-blue-900/30 rounded p-2 cursor-move hover:shadow-md transition-shadow z-10 select-none`}
                           style={{
                             height: `${Math.min((hourTickets[0].estimated_duration || 120) / 60 * 96, 384)}px`,
                           }}
                         >
                           <div className="flex items-center space-x-2 mb-1">
-                            <div className={`w-2 h-2 rounded-full ${getStatusColor(hourTickets[0].status)}`}></div>
+                            <div className={`w-2 h-2 rounded-full ${getStatusColor(hourTickets[0].status ?? '')}`}></div>
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">
                               {hourTickets[0].ticket_number}
                             </span>

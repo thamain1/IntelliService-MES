@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Hash, Package, MapPin, Plus, Search, Calendar, Truck, CheckCircle, Wrench } from 'lucide-react';
+import { Hash, Package, MapPin, Plus, Search, Calendar, Truck, Wrench } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
-import { inventoryService } from '../../services/InventoryService';
 
 type SerializedPart = Database['public']['Tables']['serialized_parts']['Row'] & {
   parts?: { name: string; part_number: string; item_type: string };
@@ -28,11 +27,7 @@ export function SerializedPartsView({ itemType = 'part' }: SerializedPartsViewPr
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  useEffect(() => {
-    loadSerializedParts();
-  }, [statusFilter, itemType]);
-
-  const loadSerializedParts = async () => {
+  const loadSerializedParts = useCallback(async () => {
     try {
       let query = supabase
         .from('serialized_parts')
@@ -57,13 +52,17 @@ export function SerializedPartsView({ itemType = 'part' }: SerializedPartsViewPr
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSerializedParts(data || []);
+      setSerializedParts((data as unknown as SerializedPart[]) || []);
     } catch (error) {
       console.error('Error loading serialized parts:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [itemType, statusFilter]);
+
+  useEffect(() => {
+    loadSerializedParts();
+  }, [loadSerializedParts]);
 
   const filteredParts = serializedParts.filter((part) => {
     const matchesSearch =
@@ -270,7 +269,7 @@ export function SerializedPartsView({ itemType = 'part' }: SerializedPartsViewPr
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                      {part.unit_cost ? `$${parseFloat(part.unit_cost as any).toFixed(2)}` : '-'}
+                      {part.unit_cost ? `$${parseFloat(part.unit_cost as unknown as string).toFixed(2)}` : '-'}
                     </td>
                   </tr>
                 ))

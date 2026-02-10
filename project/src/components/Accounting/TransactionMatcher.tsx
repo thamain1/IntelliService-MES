@@ -25,18 +25,14 @@ export function TransactionMatcher({
   const [selectedBankLine, setSelectedBankLine] = useState<string | null>(null);
   const [selectedGLEntry, setSelectedGLEntry] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<AutoMatchSuggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [_loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [matching, setMatching] = useState(false);
 
   // Filter unmatched items
   const unmatchedBankLines = bankLines.filter((l) => l.match_status === 'unmatched');
   const unmatchedGLEntries = glEntries.filter((e) => !e.reconciliation_id);
 
-  useEffect(() => {
-    loadSuggestions();
-  }, [reconciliationId]);
-
-  const loadSuggestions = async () => {
+  const loadSuggestions = useCallback(async () => {
     setLoadingSuggestions(true);
     try {
       const data = await ReconciliationService.getAutoMatchSuggestions(reconciliationId);
@@ -46,7 +42,11 @@ export function TransactionMatcher({
     } finally {
       setLoadingSuggestions(false);
     }
-  };
+  }, [reconciliationId]);
+
+  useEffect(() => {
+    loadSuggestions();
+  }, [loadSuggestions]);
 
   const handleMatch = async () => {
     if (!selectedBankLine || !selectedGLEntry) return;
@@ -63,9 +63,9 @@ export function TransactionMatcher({
       setSelectedGLEntry(null);
       onRefresh();
       loadSuggestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Match failed:', error);
-      alert('Failed to match: ' + error.message);
+      alert('Failed to match: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setMatching(false);
     }
@@ -93,9 +93,9 @@ export function TransactionMatcher({
       alert(`Auto-matched ${matched} transactions`);
       onRefresh();
       loadSuggestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Auto-match failed:', error);
-      alert('Auto-match failed: ' + error.message);
+      alert('Auto-match failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setMatching(false);
     }
@@ -106,9 +106,9 @@ export function TransactionMatcher({
       await ReconciliationService.unmatchBankLine(bankLineId);
       onRefresh();
       loadSuggestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Unmatch failed:', error);
-      alert('Failed to unmatch: ' + error.message);
+      alert('Failed to unmatch: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -122,9 +122,9 @@ export function TransactionMatcher({
       );
       onRefresh();
       loadSuggestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to apply suggestion:', error);
-      alert('Failed to match: ' + error.message);
+      alert('Failed to match: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setMatching(false);
     }

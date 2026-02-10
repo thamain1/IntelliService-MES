@@ -71,7 +71,14 @@ export function WarehouseLocationsView() {
     e.preventDefault();
 
     try {
-      const insertData: any = {
+      const insertData: {
+        name: string;
+        location_type: string;
+        address: string | null;
+        is_active: boolean;
+        vehicle_id?: string | null;
+        technician_id?: string | null;
+      } = {
         name: formData.name,
         location_type: formData.location_type,
         address: formData.address || null,
@@ -248,7 +255,7 @@ export function WarehouseLocationsView() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      location_type: e.target.value as any,
+                      location_type: e.target.value as 'warehouse' | 'truck' | 'customer_site',
                     })
                   }
                   className="input"

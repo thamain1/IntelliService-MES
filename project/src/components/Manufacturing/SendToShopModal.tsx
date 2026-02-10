@@ -70,9 +70,9 @@ export function SendToShopModal({
       } else {
         setError(result.error || 'Failed to create production order');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating production order:', err);
-      setError(err.message || 'Failed to create production order');
+      setError(err instanceof Error ? err.message : 'Failed to create production order');
     } finally {
       setLoading(false);
     }

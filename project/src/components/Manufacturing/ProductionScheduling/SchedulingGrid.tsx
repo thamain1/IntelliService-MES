@@ -16,7 +16,7 @@ export function SchedulingGrid({
   workCenters,
   dateRange,
   capacities,
-  onRefresh,
+  onRefresh: _onRefresh,
 }: SchedulingGridProps) {
   const [expandedSchedule, setExpandedSchedule] = useState<string | null>(null);
 

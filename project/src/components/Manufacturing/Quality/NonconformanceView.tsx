@@ -1,14 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   AlertOctagon,
   Search,
-  Filter,
   Plus,
-  Eye,
-  CheckCircle,
-  Clock,
   AlertTriangle,
-  FileText,
   ChevronRight,
   X,
 } from 'lucide-react';
@@ -24,7 +19,7 @@ import {
 import { useAuth } from '../../../contexts/AuthContext';
 
 export function NonconformanceView() {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const [nonconformances, setNonconformances] = useState<Nonconformance[]>([]);
   const [defectCodes, setDefectCodes] = useState<DefectCode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,11 +31,7 @@ export function NonconformanceView() {
 
   const canDisposition = profile?.role === 'admin' || profile?.role === 'supervisor';
 
-  useEffect(() => {
-    loadData();
-  }, [statusFilter, severityFilter]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const filters: { status?: NCStatus; severity?: NCSeverity } = {};
@@ -58,7 +49,11 @@ export function NonconformanceView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, severityFilter]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getSeverityBadge = (severity: NCSeverity) => {
     const styles: Record<NCSeverity, string> = {
@@ -258,7 +253,6 @@ export function NonconformanceView() {
       {selectedNC && (
         <NCDetailModal
           nc={selectedNC}
-          defectCodes={defectCodes}
           canDisposition={canDisposition}
           onClose={() => setSelectedNC(null)}
           onUpdate={() => {
@@ -289,13 +283,12 @@ export function NonconformanceView() {
 
 interface NCDetailModalProps {
   nc: Nonconformance;
-  defectCodes: DefectCode[];
   canDisposition: boolean;
   onClose: () => void;
   onUpdate: () => void;
 }
 
-function NCDetailModal({ nc, defectCodes, canDisposition, onClose, onUpdate }: NCDetailModalProps) {
+function NCDetailModal({ nc, canDisposition, onClose, onUpdate }: NCDetailModalProps) {
   const { user } = useAuth();
   const [showDispositionForm, setShowDispositionForm] = useState(false);
   const [disposition, setDisposition] = useState<DispositionType>('REWORK');
@@ -619,7 +612,7 @@ function CreateNCModal({ defectCodes, onClose, onCreate }: CreateNCModalProps) {
               </label>
               <select
                 value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value as 'OPERATOR_REPORTED' | 'INSPECTION' | 'CUSTOMER_RETURN' | 'AUDIT' })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900"
               >
                 <option value="OPERATOR_REPORTED">Operator Reported</option>
@@ -634,7 +627,7 @@ function CreateNCModal({ defectCodes, onClose, onCreate }: CreateNCModalProps) {
               </label>
               <select
                 value={formData.severity}
-                onChange={(e) => setFormData({ ...formData, severity: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, severity: e.target.value as 'MINOR' | 'MAJOR' | 'CRITICAL' })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900"
               >
                 <option value="MINOR">Minor</option>

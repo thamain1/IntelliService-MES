@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 interface FeatureData {
   enabled: boolean;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   displayName: string;
   description: string | null;
 }
@@ -12,7 +12,7 @@ interface UseFeatureResult {
   enabled: boolean;
   loading: boolean;
   error: string | null;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   refresh: () => Promise<void>;
 }
 
@@ -78,10 +78,10 @@ export function useFeature(featureKey: string): UseFeatureResult {
         setFeatureData(featureResult);
         setError(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Error loading feature ${featureKey}:`, err);
       if (mountedRef.current) {
-        setError(err.message || 'Failed to load feature flag');
+        setError(err instanceof Error ? err.message : 'Failed to load feature flag');
         // Default to disabled on error
         setFeatureData({
           enabled: false,

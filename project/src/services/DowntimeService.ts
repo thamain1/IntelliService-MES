@@ -199,9 +199,12 @@ export class DowntimeService {
         .single();
 
       return { success: true, event: downtimeEvent as DowntimeEvent };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error starting downtime:', error);
-      return { success: false, error: error.message || 'Failed to start downtime' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to start downtime' 
+      };
     }
   }
 
@@ -223,9 +226,12 @@ export class DowntimeService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error ending downtime:', error);
-      return { success: false, error: error.message || 'Failed to end downtime' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to end downtime' 
+      };
     }
   }
 
@@ -263,9 +269,12 @@ export class DowntimeService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error classifying downtime:', error);
-      return { success: false, error: error.message || 'Failed to classify downtime' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to classify downtime' 
+      };
     }
   }
 
@@ -299,9 +308,12 @@ export class DowntimeService {
         .single();
 
       return { success: true, event: event as DowntimeEvent };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error auto-creating downtime:', error);
-      return { success: false, error: error.message || 'Failed to auto-create downtime' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to auto-create downtime' 
+      };
     }
   }
 
@@ -409,9 +421,12 @@ export class DowntimeService {
       if (error) throw error;
 
       return { success: true, reason: data as DowntimeReason };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating reason code:', error);
-      return { success: false, error: error.message || 'Failed to create reason code' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to create reason code' 
+      };
     }
   }
 
@@ -431,9 +446,12 @@ export class DowntimeService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating reason code:', error);
-      return { success: false, error: error.message || 'Failed to update reason code' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to update reason code' 
+      };
     }
   }
 

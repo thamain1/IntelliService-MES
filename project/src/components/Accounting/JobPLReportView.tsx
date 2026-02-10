@@ -27,33 +27,16 @@ export function JobPLReportView({ onExportPDF }: JobPLReportViewProps) {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
 
-  useEffect(() => {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-    setStartDate(firstDayOfMonth.toISOString().split('T')[0]);
-    setEndDate(lastDayOfMonth.toISOString().split('T')[0]);
-
-    loadCustomers();
-  }, []);
-
-  useEffect(() => {
-    if (startDate && endDate) {
-      loadReport();
-    }
-  }, [startDate, endDate, jobType, jobStatus, customerId, minRevenue]);
-
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     const { data } = await supabase
       .from('customers')
       .select('id, name')
       .order('name');
 
-    setCustomers(data || []);
-  };
+    setCustomers((data as unknown as Customer[]) || []);
+  }, []);
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -68,13 +51,30 @@ export function JobPLReportView({ onExportPDF }: JobPLReportViewProps) {
       });
 
       setReport(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading job P&L:', err);
-      setError(err.message || 'Failed to load report');
+      setError(err instanceof Error ? err.message : 'Failed to load report');
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, jobType, jobStatus, customerId, minRevenue]);
+
+  useEffect(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    setStartDate(firstDayOfMonth.toISOString().split('T')[0]);
+    setEndDate(lastDayOfMonth.toISOString().split('T')[0]);
+
+    loadCustomers();
+  }, [loadCustomers]);
+
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadReport();
+    }
+  }, [startDate, endDate, loadReport]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

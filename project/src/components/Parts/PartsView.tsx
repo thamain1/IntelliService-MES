@@ -95,13 +95,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
 
   const [formData, setFormData] = useState(getInitialFormData());
 
-  useEffect(() => {
-    loadParts();
-    loadVendors();
-    loadReorderAlertCount();
-  }, [itemType]);
-
-  const loadReorderAlertCount = async () => {
+  const loadReorderAlertCount = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vw_reorder_alerts')
@@ -116,9 +110,9 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
     } catch (error) {
       console.error('Error loading reorder alert count:', error);
     }
-  };
+  }, []);
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -127,13 +121,13 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as unknown as Vendor[]) || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     }
-  };
+  }, []);
 
-  const loadParts = async () => {
+  const loadParts = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -143,13 +137,19 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setParts(data || []);
+      setParts((data as unknown as PartWithInventory[]) || []);
     } catch (error) {
       console.error(`Error loading ${itemLabelPlural.toLowerCase()}:`, error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [itemType, itemLabelPlural]);
+
+  useEffect(() => {
+    loadParts();
+    loadVendors();
+    loadReorderAlertCount();
+  }, [loadParts, loadVendors, loadReorderAlertCount]);
 
   const openEditModal = async (part: PartWithInventory) => {
     setEditingPart(part);
@@ -173,8 +173,8 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
       is_returnable: part.is_returnable || false,
       tool_category: part.tool_category || '',
       asset_tag: part.asset_tag || '',
-      requires_registration: (part as any).requires_registration || false,
-      registration_url: (part as any).registration_url || '',
+      requires_registration: (part as unknown as { requires_registration?: boolean }).requires_registration || false,
+      registration_url: (part as unknown as { registration_url?: string }).registration_url || '',
     });
 
     // Load existing vendor mapping

@@ -142,7 +142,7 @@ export function WorkOrderTraveler({ orderId, orderStatus, steps, onUpdate }: Wor
 
       {/* Steps List */}
       <div className="space-y-3">
-        {steps.map((step, index) => (
+        {steps.map((step, _index) => (
           <div
             key={step.id}
             className={`border rounded-lg transition-colors ${getStepBg(step.status)}`}

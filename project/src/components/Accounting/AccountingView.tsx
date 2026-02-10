@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Calendar, FileText, X, Filter, AlertCircle, Wallet, Download } from 'lucide-react';
-import { ExportService, ExportFormat } from '../../services/ExportService';
 import { supabase } from '../../lib/supabase';
 import { LaborRatesSettings } from './LaborRatesSettings';
 import { ReconciliationSession } from './ReconciliationSession';
@@ -82,11 +81,14 @@ type BankReconciliation = {
   id: string;
   account_id: string;
   reconciliation_date: string;
-  statement_balance: number;
-  book_balance: number;
-  difference: number;
+  statement_balance?: number;
+  book_balance?: number;
+  difference?: number;
   status: string;
   account_name?: string;
+  statement_end_date?: string;
+  cleared_balance?: number;
+  statement_ending_balance?: number;
 };
 
 interface AccountingViewProps {
@@ -144,7 +146,6 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
   // AP state
   const [apSummary, setApSummary] = useState<APSummary | null>(null);
-  const [_apLoading, setApLoading] = useState(false);
   const [showNewBillModal, setShowNewBillModal] = useState(false);
   const [showBillDetailModal, setShowBillDetailModal] = useState(false);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
@@ -167,44 +168,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     reference_number: '',
   });
 
-  useEffect(() => {
-    loadGLAccounts();
-    loadJournalEntries();
-  }, []);
-
-  // Handle initialView routing
-  useEffect(() => {
-    if (!initialView) return;
-
-    switch (initialView) {
-      case 'dashboard':
-        setActiveTab('dashboard');
-        setSelectedReport(null);
-        break;
-      case 'general-ledger':
-        setActiveTab('reports');
-        setSelectedReport('general-ledger');
-        loadGLEntries();
-        break;
-      case 'ar-ap':
-        setActiveTab('reports');
-        setSelectedReport('ar-ap');
-        loadARData();
-        loadAPData();
-        break;
-      case 'chart-of-accounts':
-        setActiveTab('accounts');
-        setSelectedReport(null);
-        break;
-      case 'reconciliations':
-        setActiveTab('reconciliations');
-        setSelectedReport(null);
-        loadReconciliationsData();
-        break;
-    }
-  }, [initialView]);
-
-  const loadGLAccounts = async () => {
+  const loadGLAccounts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('gl_accounts')
@@ -212,15 +176,15 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
         .order('account_number', { ascending: true });
 
       if (error) throw error;
-      setGlAccounts(data || []);
+      setGlAccounts((data as unknown as GLAccount[]) || []);
     } catch (error) {
       console.error('Error loading GL accounts:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadJournalEntries = async () => {
+  const loadJournalEntries = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('journal_entries')
@@ -229,13 +193,13 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
         .limit(50);
 
       if (error) throw error;
-      setJournalEntries(data || []);
+      setJournalEntries((data as unknown as JournalEntry[]) || []);
     } catch (error) {
       console.error('Error loading journal entries:', error);
     }
-  };
+  }, []);
 
-  const loadGLEntries = async () => {
+  const loadGLEntries = useCallback(async () => {
     setGlLoading(true);
     try {
       let query = supabase
@@ -256,83 +220,15 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
       const { data, error } = await query;
       if (error) throw error;
-      setGlEntries(data || []);
+      setGlEntries((data as unknown as GLEntry[]) || []);
     } catch (error) {
       console.error('Error loading GL entries:', error);
     } finally {
       setGlLoading(false);
     }
-  };
+  }, [glStartDate, glEndDate, glAccountFilter, glReferenceFilter]);
 
-  const exportGLReport = (format: ExportFormat) => {
-    const exportData = {
-      title: 'General Ledger Report',
-      dateRange: {
-        start: new Date(glStartDate),
-        end: new Date(glEndDate),
-      },
-      columns: [
-        { header: 'Date', key: 'date', width: 12 },
-        { header: 'Account', key: 'account', width: 30 },
-        { header: 'Description', key: 'description', width: 40 },
-        { header: 'Reference', key: 'reference', width: 15 },
-        { header: 'Debit', key: 'debit', width: 15 },
-        { header: 'Credit', key: 'credit', width: 15 },
-      ],
-      rows: glEntries.map((entry) => ({
-        date: new Date(entry.entry_date).toLocaleDateString(),
-        account: `${entry.chart_of_accounts?.account_code || ''} - ${entry.chart_of_accounts?.account_name || ''}`,
-        description: entry.description || '',
-        reference: entry.reference_type || '',
-        debit: entry.debit_amount > 0 ? `$${entry.debit_amount.toFixed(2)}` : '',
-        credit: entry.credit_amount > 0 ? `$${entry.credit_amount.toFixed(2)}` : '',
-      })),
-      summary: {
-        totalDebits: glEntries.reduce((sum, e) => sum + (e.debit_amount || 0), 0),
-        totalCredits: glEntries.reduce((sum, e) => sum + (e.credit_amount || 0), 0),
-      },
-    };
-
-    ExportService.export(exportData, format);
-  };
-
-  const exportARAPReport = (format: ExportFormat) => {
-    const exportData = {
-      title: 'Accounts Receivable Aging Report',
-      dateRange: {
-        start: new Date(),
-        end: new Date(),
-      },
-      columns: [
-        { header: 'Customer', key: 'customer', width: 30 },
-        { header: 'Invoice #', key: 'invoice', width: 15 },
-        { header: 'Issue Date', key: 'issueDate', width: 12 },
-        { header: 'Due Date', key: 'dueDate', width: 12 },
-        { header: 'Aging', key: 'aging', width: 12 },
-        { header: 'Balance Due', key: 'balanceDue', width: 15 },
-      ],
-      rows: arInvoices.map((invoice) => ({
-        customer: invoice.customer_name,
-        invoice: invoice.invoice_number,
-        issueDate: new Date(invoice.issue_date).toLocaleDateString(),
-        dueDate: new Date(invoice.due_date).toLocaleDateString(),
-        aging: getAgingBucketLabel(invoice.days_overdue),
-        balanceDue: `$${invoice.balance_due.toFixed(2)}`,
-      })),
-      summary: {
-        total: arSummary.total,
-        current: arSummary.current,
-        days_1_30: arSummary.days_1_30,
-        days_31_60: arSummary.days_31_60,
-        days_61_90: arSummary.days_61_90,
-        days_90_plus: arSummary.days_90_plus,
-      },
-    };
-
-    ExportService.export(exportData, format);
-  };
-
-  const loadARData = async () => {
+  const loadARData = useCallback(async () => {
     setArLoading(true);
     try {
       const { data, error } = await supabase
@@ -346,20 +242,20 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
       const today = new Date();
       const invoices: ARInvoice[] = (data || []).map((inv: unknown) => {
-        const invoice = inv as { id: string; invoice_number: string; customer_id: string; issue_date: string; due_date: string; balance_due: number; customers?: { name: string } };
-        const dueDate = new Date(inv.due_date);
+        const i = inv as { id: string; invoice_number: string; customer_id: string; issue_date: string; due_date: string; balance_due: number; customers: { name: string } | null };
+        const dueDate = new Date(i.due_date);
         const diffTime = today.getTime() - dueDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const daysOverdue = diffDays > 0 ? diffDays : 0;
 
         return {
-          id: invoice.id,
-          invoice_number: invoice.invoice_number,
-          customer_id: invoice.customer_id,
-          customer_name: invoice.customers?.name || 'Unknown',
-          issue_date: invoice.issue_date,
-          due_date: invoice.due_date,
-          balance_due: invoice.balance_due,
+          id: i.id,
+          invoice_number: i.invoice_number,
+          customer_id: i.customer_id,
+          customer_name: i.customers?.name || 'Unknown',
+          issue_date: i.issue_date,
+          due_date: i.due_date,
+          balance_due: i.balance_due,
           days_overdue: daysOverdue,
         };
       });
@@ -397,9 +293,9 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     } finally {
       setArLoading(false);
     }
-  };
+  }, []);
 
-  const loadAPData = async () => {
+  const loadAPData = useCallback(async () => {
     setApLoading(true);
     try {
       const summary = await APService.getAPSummary();
@@ -409,39 +305,9 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     } finally {
       setApLoading(false);
     }
-  };
+  }, []);
 
-  const _handleViewBill = (bill: Bill) => {
-    setSelectedBill(bill);
-    setShowBillDetailModal(true);
-  };
-
-  const handleRecordPayment = (vendorId?: string, billId?: string) => {
-    if (billId) {
-      // If opening from a specific bill, get vendor from bill
-      APService.getBillById(billId).then((bill) => {
-        if (bill) {
-          setSelectedVendorIdForPayment(bill.vendor_id);
-          setSelectedBillIdForPayment(billId);
-          setShowRecordPaymentModal(true);
-        }
-      });
-    } else {
-      setSelectedVendorIdForPayment(vendorId);
-      setSelectedBillIdForPayment(undefined);
-      setShowRecordPaymentModal(true);
-    }
-  };
-
-  const handleAPDataRefresh = () => {
-    loadAPData();
-    setShowNewBillModal(false);
-    setShowBillDetailModal(false);
-    setShowRecordPaymentModal(false);
-    setSelectedBill(null);
-  };
-
-  const loadReconciliationsData = async () => {
+  const loadReconciliationsData = useCallback(async () => {
     setReconLoading(true);
     try {
       // Load cash accounts
@@ -453,7 +319,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
         .order('account_number', { ascending: true });
 
       if (accountsError) throw accountsError;
-      setCashAccounts(accounts || []);
+      setCashAccounts((accounts as unknown as GLAccount[]) || []);
 
       // Load recent reconciliations using the service
       const recons = await ReconciliationService.getReconciliations();
@@ -470,13 +336,50 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
           };
         })
       );
-      setReconciliations(reconsWithAccountNames.slice(0, 10));
+      setReconciliations((reconsWithAccountNames as unknown as BankReconciliation[]).slice(0, 10));
     } catch (error) {
       console.error('Error loading reconciliation data:', error);
     } finally {
       setReconLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadGLAccounts();
+    loadJournalEntries();
+  }, [loadGLAccounts, loadJournalEntries]);
+
+  // Handle initialView routing
+  useEffect(() => {
+    if (!initialView) return;
+
+    switch (initialView) {
+      case 'dashboard':
+        setActiveTab('dashboard');
+        setSelectedReport(null);
+        break;
+      case 'general-ledger':
+        setActiveTab('reports');
+        setSelectedReport('general-ledger');
+        loadGLEntries();
+        break;
+      case 'ar-ap':
+        setActiveTab('reports');
+        setSelectedReport('ar-ap');
+        loadARData();
+        loadAPData();
+        break;
+      case 'chart-of-accounts':
+        setActiveTab('accounts');
+        setSelectedReport(null);
+        break;
+      case 'reconciliations':
+        setActiveTab('reconciliations');
+        setSelectedReport(null);
+        loadReconciliationsData();
+        break;
+    }
+  }, [initialView, loadGLEntries, loadARData, loadAPData, loadReconciliationsData]);
 
   const handleStartReconciliation = (account: GLAccount) => {
     setSelectedAccountForRecon(account);
@@ -510,7 +413,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
         description: accountFormData.description,
         is_active: accountFormData.is_active,
         normal_balance: accountFormData.account_type === 'asset' || accountFormData.account_type === 'expense' ? 'debit' as const : 'credit' as const,
-      }] as any);
+      }]);
 
       if (error) throw error;
 
@@ -539,9 +442,9 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     }]);
   };
 
-  const updateJournalLine = (index: number, field: string, value: any) => {
+  const updateJournalLine = (index: number, field: string, value: string | number) => {
     const updated = [...journalLines];
-    updated[index] = { ...updated[index], [field]: value };
+    (updated[index] as unknown as Record<string, unknown>)[field] = value;
     setJournalLines(updated);
   };
 
@@ -597,7 +500,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
       const { error: entriesError } = await supabase
         .from('gl_entries')
-        .insert(entriesToInsert as any);
+        .insert(entriesToInsert);
 
       if (entriesError) throw entriesError;
 
@@ -737,7 +640,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
           {['dashboard', 'accounts', 'journal', 'reports', 'reconciliations', 'settings'].map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as any)}
+              onClick={() => setActiveTab(tab as 'dashboard' | 'accounts' | 'journal' | 'reports' | 'settings' | 'reconciliations')}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-blue-600 text-blue-600'
@@ -1992,7 +1895,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
                   <select
                     required
                     value={accountFormData.account_type}
-                    onChange={(e) => setAccountFormData({ ...accountFormData, account_type: e.target.value as any })}
+                    onChange={(e) => setAccountFormData({ ...accountFormData, account_type: e.target.value as 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' })}
                     className="input"
                   >
                     <option value="asset">Asset</option>
@@ -2282,9 +2185,10 @@ function StartReconciliationModal({
       });
 
       onCreate(reconciliation.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error starting reconciliation:', error);
-      alert('Failed to start reconciliation: ' + error.message);
+      const errorMessage = (error as Error)?.message || 'Unknown error';
+      alert('Failed to start reconciliation: ' + errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle, X, Settings } from 'lucide-react';
+import { Upload, FileText, AlertCircle, X, Settings } from 'lucide-react';
 import {
   parseFile,
   parseCSV,
@@ -18,7 +18,7 @@ interface BankStatementImportProps {
 export function BankStatementImport({
   reconciliationId,
   onImportComplete,
-  onCancel,
+  onCancel: _onCancel,
 }: BankStatementImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -26,7 +26,7 @@ export function BankStatementImport({
   const [parsedLines, setParsedLines] = useState<ParsedBankLine[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [step, setStep] = useState<'upload' | 'mapping' | 'preview' | 'importing'>('upload');
-  const [importing, setImporting] = useState(false);
+  const [_importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
 
   // CSV column mapping state
@@ -41,22 +41,29 @@ export function BankStatementImport({
     referenceNumber: '',
   });
 
-  const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      processFile(droppedFile);
-    }
+  const autoDetectMapping = useCallback((headers: string[]): CSVColumnMapping => {
+    const lowerHeaders = headers.map((h) => h.toLowerCase());
+
+    const findHeader = (patterns: string[]) => {
+      for (const pattern of patterns) {
+        const index = lowerHeaders.findIndex((h) => h.includes(pattern));
+        if (index !== -1) return headers[index];
+      }
+      return '';
+    };
+
+    return {
+      date: findHeader(['date', 'trans', 'posted']),
+      description: findHeader(['description', 'memo', 'payee', 'name']),
+      amount: findHeader(['amount']),
+      debit: findHeader(['debit', 'withdrawal']),
+      credit: findHeader(['credit', 'deposit']),
+      checkNumber: findHeader(['check', 'cheque']),
+      referenceNumber: findHeader(['reference', 'ref']),
+    };
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      processFile(selectedFile);
-    }
-  }, []);
-
-  const processFile = async (selectedFile: File) => {
+  const processFile = useCallback(async (selectedFile: File) => {
     setFile(selectedFile);
     setParseErrors([]);
     setParsedLines([]);
@@ -102,29 +109,22 @@ export function BankStatementImport({
     };
 
     reader.readAsText(selectedFile);
-  };
+  }, [autoDetectMapping]);
 
-  const autoDetectMapping = (headers: string[]): CSVColumnMapping => {
-    const lowerHeaders = headers.map((h) => h.toLowerCase());
+  const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      processFile(droppedFile);
+    }
+  }, [processFile]);
 
-    const findHeader = (patterns: string[]) => {
-      for (const pattern of patterns) {
-        const index = lowerHeaders.findIndex((h) => h.includes(pattern));
-        if (index !== -1) return headers[index];
-      }
-      return '';
-    };
-
-    return {
-      date: findHeader(['date', 'trans', 'posted']),
-      description: findHeader(['description', 'memo', 'payee', 'name']),
-      amount: findHeader(['amount']),
-      debit: findHeader(['debit', 'withdrawal']),
-      credit: findHeader(['credit', 'deposit']),
-      checkNumber: findHeader(['check', 'cheque']),
-      referenceNumber: findHeader(['reference', 'ref']),
-    };
-  };
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      processFile(selectedFile);
+    }
+  }, [processFile]);
 
   const handleMappingComplete = () => {
     if (!columnMapping.date || !columnMapping.description) {
@@ -172,9 +172,9 @@ export function BankStatementImport({
       }
 
       onImportComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Import error:', error);
-      setParseErrors(['Failed to import: ' + error.message]);
+      setParseErrors(['Failed to import: ' + (error instanceof Error ? error.message : 'Unknown error')]);
       setStep('preview');
     } finally {
       setImporting(false);

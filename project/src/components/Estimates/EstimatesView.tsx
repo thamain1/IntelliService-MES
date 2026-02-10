@@ -43,18 +43,10 @@ export function EstimatesView({ onViewEstimate, onCreateEstimate }: EstimatesVie
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  useEffect(() => {
-    loadEstimates();
-  }, []);
-
-  useEffect(() => {
-    filterEstimates();
-  }, [estimates, searchTerm, statusFilter]);
-
-  const loadEstimates = async () => {
+  const loadEstimates = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('estimates')
+      const { data, error } = await (supabase
+        .from('estimates') as unknown as ReturnType<typeof supabase.from>)
         .select(`
           *,
           customers(name),
@@ -63,15 +55,15 @@ export function EstimatesView({ onViewEstimate, onCreateEstimate }: EstimatesVie
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setEstimates(data || []);
+      setEstimates((data as unknown as Estimate[]) || []);
     } catch (error) {
       console.error('Error loading estimates:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filterEstimates = () => {
+  const filterEstimates = useCallback(() => {
     let filtered = estimates;
 
     if (statusFilter !== 'all') {
@@ -87,7 +79,15 @@ export function EstimatesView({ onViewEstimate, onCreateEstimate }: EstimatesVie
     }
 
     setFilteredEstimates(filtered);
-  };
+  }, [estimates, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    loadEstimates();
+  }, [loadEstimates]);
+
+  useEffect(() => {
+    filterEstimates();
+  }, [filterEstimates]);
 
   const getStatusBadge = (status: string) => {
     const badges = {

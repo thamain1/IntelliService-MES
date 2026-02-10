@@ -26,7 +26,7 @@ interface CodeSelectorProps {
 
 export function CodeSelector({
   type,
-  value,
+  value: _value,
   onChange,
   label,
   required = false,
@@ -38,20 +38,7 @@ export function CodeSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCode, setSelectedCode] = useState<StandardCode | null>(null);
 
-  useEffect(() => {
-    loadCodes();
-  }, [type]);
-
-  useEffect(() => {
-    if (value && codes.length > 0) {
-      const found = codes.find((c) => c.code === value);
-      setSelectedCode(found || null);
-    } else {
-      setSelectedCode(null);
-    }
-  }, [value, codes]);
-
-  const loadCodes = async () => {
+  const loadCodes = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -63,13 +50,17 @@ export function CodeSelector({
         .order('label');
 
       if (error) throw error;
-      setCodes(data || []);
+      setCodes((data as unknown as StandardCode[]) || []);
     } catch (err) {
       console.error('Failed to load codes:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [type]);
+
+  useEffect(() => {
+    loadCodes();
+  }, [loadCodes]);
 
   const handleSelect = (code: StandardCode) => {
     setSelectedCode(code);

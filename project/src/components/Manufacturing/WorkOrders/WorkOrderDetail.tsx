@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   Factory,
@@ -32,17 +32,13 @@ export function WorkOrderDetail({ orderId, onBack }: WorkOrderDetailProps) {
   const [order, setOrder] = useState<ProductionOrder | null>(null);
   const [steps, setSteps] = useState<ProductionStep[]>([]);
   const [bom, setBom] = useState<BOMItem[]>([]);
-  const [timeLogs, setTimeLogs] = useState<any[]>([]);
-  const [materialMoves, setMaterialMoves] = useState<any[]>([]);
+  const [timeLogs, setTimeLogs] = useState<Record<string, unknown>[]>([]);
+  const [materialMoves, setMaterialMoves] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('traveler');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadOrder();
-  }, [orderId]);
-
-  const loadOrder = async () => {
+  const loadOrder = useCallback(async () => {
     try {
       setLoading(true);
       const result = await ManufacturingService.getOrderById(orderId);
@@ -50,15 +46,19 @@ export function WorkOrderDetail({ orderId, onBack }: WorkOrderDetailProps) {
         setOrder(result.order);
         setSteps(result.steps);
         setBom(result.bom);
-        setTimeLogs(result.timeLogs);
-        setMaterialMoves(result.materialMoves);
+        setTimeLogs(result.timeLogs as unknown as Record<string, unknown>[]);
+        setMaterialMoves(result.materialMoves as unknown as Record<string, unknown>[]);
       }
     } catch (error) {
       console.error('Error loading order:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    loadOrder();
+  }, [loadOrder]);
 
   const handleStatusAction = async (action: 'start' | 'pause' | 'resume' | 'complete') => {
     if (!order) return;
@@ -73,12 +73,13 @@ export function WorkOrderDetail({ orderId, onBack }: WorkOrderDetailProps) {
             actual_start: new Date().toISOString(),
           });
           break;
-        case 'pause':
+        case 'pause': {
           const reason = prompt('Enter hold reason:');
           if (reason) {
             result = await ManufacturingService.putOnHold(order.id, reason);
           }
           break;
+        }
         case 'resume':
           result = await ManufacturingService.resumeOrder(order.id);
           break;

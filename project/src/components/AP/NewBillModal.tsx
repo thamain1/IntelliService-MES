@@ -43,67 +43,7 @@ export function NewBillModal({ isOpen, onClose, onBillCreated, preselectedVendor
     { description: '', quantity: 1, unit_price: 0, amount: 0 },
   ]);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadVendors();
-      loadAccounts();
-      resetForm();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    // Set default due date based on payment terms
-    if (billDate) {
-      const date = new Date(billDate);
-      let days = 30;
-
-      if (paymentTerms === 'net_15') days = 15;
-      else if (paymentTerms === 'net_30') days = 30;
-      else if (paymentTerms === 'net_45') days = 45;
-      else if (paymentTerms === 'net_60') days = 60;
-      else if (paymentTerms === 'due_on_receipt') days = 0;
-
-      date.setDate(date.getDate() + days);
-      setDueDate(date.toISOString().split('T')[0]);
-    }
-  }, [billDate, paymentTerms]);
-
-  useEffect(() => {
-    // Auto-set payment terms from vendor
-    const vendor = vendors.find((v) => v.id === vendorId);
-    if (vendor?.payment_terms) {
-      setPaymentTerms(vendor.payment_terms);
-    }
-  }, [vendorId, vendors]);
-
-  const loadVendors = async () => {
-    try {
-      const { data } = await supabase
-        .from('vendors')
-        .select('id, name, vendor_code, payment_terms')
-        .eq('is_active', true)
-        .order('name');
-      setVendors(data || []);
-    } catch (err) {
-      console.error('Failed to load vendors:', err);
-    }
-  };
-
-  const loadAccounts = async () => {
-    try {
-      const { data } = await supabase
-        .from('chart_of_accounts')
-        .select('id, account_code, account_name, account_type')
-        .eq('is_active', true)
-        .in('account_type', ['expense', 'asset'])
-        .order('account_code');
-      setAccounts(data || []);
-    } catch (err) {
-      console.error('Failed to load accounts:', err);
-    }
-  };
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setVendorId(preselectedVendorId || '');
     setBillDate(new Date().toISOString().split('T')[0]);
     setDueDate('');
@@ -114,7 +54,42 @@ export function NewBillModal({ isOpen, onClose, onBillCreated, preselectedVendor
     setTaxAmount('0');
     setLineItems([{ description: '', quantity: 1, unit_price: 0, amount: 0 }]);
     setError('');
-  };
+  }, [preselectedVendorId]);
+
+  const loadVendors = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('vendors')
+        .select('id, name, vendor_code, payment_terms')
+        .eq('is_active', true)
+        .order('name');
+      setVendors((data as unknown as Vendor[]) || []);
+    } catch (err) {
+      console.error('Failed to load vendors:', err);
+    }
+  }, []);
+
+  const loadAccounts = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('chart_of_accounts')
+        .select('id, account_code, account_name, account_type')
+        .eq('is_active', true)
+        .in('account_type', ['expense', 'asset'])
+        .order('account_code');
+      setAccounts((data as unknown as Account[]) || []);
+    } catch (err) {
+      console.error('Failed to load accounts:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadVendors();
+      loadAccounts();
+      resetForm();
+    }
+  }, [isOpen, loadVendors, loadAccounts, resetForm]);
 
   const addLineItem = () => {
     setLineItems([...lineItems, { description: '', quantity: 1, unit_price: 0, amount: 0 }]);

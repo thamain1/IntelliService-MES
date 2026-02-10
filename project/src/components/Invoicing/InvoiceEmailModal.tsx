@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Send, Download, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 import { InvoiceEmailService, InvoiceEmailData, EmailComposition } from '../../services/InvoiceEmailService';
 
@@ -20,11 +20,7 @@ export function InvoiceEmailModal({ invoiceId, onClose, onSent }: InvoiceEmailMo
   });
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    loadInvoiceData();
-  }, [invoiceId]);
-
-  const loadInvoiceData = async () => {
+  const loadInvoiceData = useCallback(async () => {
     setLoading(true);
     const data = await InvoiceEmailService.loadInvoiceEmailData(invoiceId);
     if (data) {
@@ -32,7 +28,11 @@ export function InvoiceEmailModal({ invoiceId, onClose, onSent }: InvoiceEmailMo
       setComposition(InvoiceEmailService.getDefaultEmailComposition(data));
     }
     setLoading(false);
-  };
+  }, [invoiceId]);
+
+  useEffect(() => {
+    loadInvoiceData();
+  }, [loadInvoiceData]);
 
   const handleSend = async () => {
     if (!invoiceData) return;
@@ -62,7 +62,7 @@ export function InvoiceEmailModal({ invoiceId, onClose, onSent }: InvoiceEmailMo
           onClose();
         }, 2000);
       }
-    } catch (error) {
+    } catch (_error) {
       setResult({ success: false, message: 'Failed to send email. Please try again.' });
     } finally {
       setSending(false);

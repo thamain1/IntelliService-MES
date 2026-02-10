@@ -4,7 +4,7 @@ import { ImportEntityType, DataImportService } from '../../services/DataImportSe
 
 interface StepUploadFileProps {
   entityType: ImportEntityType;
-  onNext: (data: { file: File; content: string; parsedRows: any[] }) => void;
+  onNext: (data: { file: File; content: string; parsedRows: Record<string, unknown>[] }) => void;
   onBack: () => void;
 }
 
@@ -48,7 +48,7 @@ export function StepUploadFile({ entityType, onNext, onBack }: StepUploadFilePro
       const content = await readFileContent(selectedFile);
 
       // Detect format
-      const { delimiter, encoding } = DataImportService.detectFileFormat(content);
+      const { delimiter } = DataImportService.detectFileFormat(content);
 
       // Parse CSV
       const parsedRows = DataImportService.parseCSV(content, delimiter);
@@ -66,9 +66,10 @@ export function StepUploadFile({ entityType, onNext, onBack }: StepUploadFilePro
       });
 
       setParsing(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Parse error:', error);
-      setParseError(error.message || 'Failed to parse file');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to parse file';
+      setParseError(errorMessage);
       setParsing(false);
     }
   };
@@ -100,8 +101,9 @@ export function StepUploadFile({ entityType, onNext, onBack }: StepUploadFilePro
       const parsedRows = DataImportService.parseCSV(content, delimiter);
 
       onNext({ file, content, parsedRows });
-    } catch (error: any) {
-      setParseError(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
+      setParseError(errorMessage);
     }
   };
 

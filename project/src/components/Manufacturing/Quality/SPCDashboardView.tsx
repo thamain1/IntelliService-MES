@@ -1,18 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   LineChart,
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
   Target,
-  Activity,
-  BarChart3,
-  RefreshCw,
-  Filter,
-  ChevronDown,
 } from 'lucide-react';
-import { SPCService, ControlChartData, SPCRuleViolation, ProcessCapability } from '../../../services/SPCService';
-import { QualityExecutionService, InspectionPlan, Characteristic } from '../../../services/QualityExecutionService';
+import { SPCService, ControlChartData, SPCRuleViolation } from '../../../services/SPCService';
+import { QualityExecutionService, InspectionPlan } from '../../../services/QualityExecutionService';
 
 export function SPCDashboardView() {
   const [plans, setPlans] = useState<InspectionPlan[]>([]);
@@ -23,18 +16,7 @@ export function SPCDashboardView() {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
 
-  useEffect(() => {
-    loadPlans();
-    loadViolations();
-  }, []);
-
-  useEffect(() => {
-    if (selectedChar) {
-      loadChartData(selectedChar);
-    }
-  }, [selectedChar]);
-
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     try {
       const data = await QualityExecutionService.getInspectionPlans({ activeOnly: true });
       setPlans(data);
@@ -43,18 +25,18 @@ export function SPCDashboardView() {
       console.error('Error loading plans:', error);
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadViolations = async () => {
+  const loadViolations = useCallback(async () => {
     try {
       const data = await SPCService.getViolations({ acknowledged: false });
       setViolations(data);
     } catch (error) {
       console.error('Error loading violations:', error);
     }
-  };
+  }, []);
 
-  const loadChartData = async (characteristicId: string) => {
+  const loadChartData = useCallback(async (characteristicId: string) => {
     setChartLoading(true);
     try {
       const data = await SPCService.getControlChartData(characteristicId, {
@@ -66,7 +48,18 @@ export function SPCDashboardView() {
     } finally {
       setChartLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadPlans();
+    loadViolations();
+  }, [loadPlans, loadViolations]);
+
+  useEffect(() => {
+    if (selectedChar) {
+      loadChartData(selectedChar);
+    }
+  }, [selectedChar, loadChartData]);
 
   const handleAcknowledgeViolation = async (violationId: string) => {
     try {
@@ -240,7 +233,7 @@ export function SPCDashboardView() {
 
                   {/* Data points */}
                   <div className="absolute inset-0 flex items-end justify-around px-2 pb-4">
-                    {chartData.subgroups.slice(-20).map((sg, idx) => {
+                    {chartData.subgroups.slice(-20).map((sg) => {
                       const range = chartData.controlLimits.ucl - chartData.controlLimits.lcl;
                       const value = sg.mean || 0;
                       const pct = ((value - chartData.controlLimits.lcl) / range) * 80 + 10;

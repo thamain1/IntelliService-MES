@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  Filter,
   Plus,
   Clock,
   CheckCircle,
@@ -25,7 +24,7 @@ export function DowntimeLogView() {
   const { profile } = useAuth();
   const [events, setEvents] = useState<DowntimeEvent[]>([]);
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
-  const [summary, setSummary] = useState<DowntimeSummary | null>(null);
+  const [_summary, setSummary] = useState<DowntimeSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedWorkCenter, setSelectedWorkCenter] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -57,41 +56,32 @@ export function DowntimeLogView() {
   const canManage = profile?.role === 'admin' || profile?.role === 'dispatcher' || profile?.role === 'supervisor';
   const canClassify = canManage || profile?.role === 'operator';
 
-  useEffect(() => {
-    loadWorkCenters();
-    loadReasons();
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [selectedWorkCenter, filterStatus, filterCategory, dateRange]);
-
-  const loadWorkCenters = async () => {
+  const loadWorkCenters = useCallback(async () => {
     try {
       const wcs = await ManufacturingService.getWorkCenters(true);
       setWorkCenters(wcs);
     } catch (error) {
       console.error('Error loading work centers:', error);
     }
-  };
+  }, []);
 
-  const loadReasons = async () => {
+  const loadReasons = useCallback(async () => {
     try {
       const data = await DowntimeService.getReasons(true);
       setReasons(data);
     } catch (error) {
       console.error('Error loading reasons:', error);
     }
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const fromDate = dateRange.start.toISOString();
       const toDate = dateRange.end.toISOString();
 
       // Build filters
-      const filters: any = {
+      const filters: Record<string, string | boolean> = {
         from_date: fromDate,
         to_date: toDate,
       };
@@ -124,7 +114,16 @@ export function DowntimeLogView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, selectedWorkCenter, filterStatus, filterCategory]);
+
+  useEffect(() => {
+    loadWorkCenters();
+    loadReasons();
+  }, [loadWorkCenters, loadReasons]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handlePrevWeek = () => {
     setDateRange(prev => ({

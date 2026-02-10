@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Building2, DollarSign, TrendingUp, MapPin, CheckCircle, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -57,11 +57,7 @@ export function MasterProjectView({ projectId, onClose }: MasterProjectViewProps
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'sites' | 'financials'>('overview');
 
-  useEffect(() => {
-    loadMasterProjectData();
-  }, [projectId]);
-
-  const loadMasterProjectData = async () => {
+  const loadMasterProjectData = useCallback(async () => {
     try {
       const { data: masterData, error: masterError } = await supabase
         .from('v_master_project_rollup')
@@ -85,7 +81,11 @@ export function MasterProjectView({ projectId, onClose }: MasterProjectViewProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadMasterProjectData();
+  }, [loadMasterProjectData]);
 
   const formatCurrency = (value: number | null) => {
     if (value === null || value === undefined) return '$0.00';

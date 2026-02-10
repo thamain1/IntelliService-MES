@@ -32,11 +32,7 @@ export function FinancialsReport() {
   const [dailyRevenue, setDailyRevenue] = useState<DailyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMetrics();
-  }, [dateRange]);
-
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -92,7 +88,11 @@ export function FinancialsReport() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start, end]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const getExportData = useCallback((): ExportData => {
     return {

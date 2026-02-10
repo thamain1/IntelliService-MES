@@ -96,14 +96,7 @@ export function EstimateDetailModal({ estimateId, isOpen, onClose, onSuccess }: 
   const [conversionInfo, setConversionInfo] = useState<ConversionInfo | null>(null);
   const [refreshingCosts, setRefreshingCosts] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && estimateId) {
-      loadEstimateDetails();
-      loadData();
-    }
-  }, [isOpen, estimateId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [laborRatesRes, partsRes, equipmentRes] = await Promise.all([
         supabase
@@ -116,23 +109,58 @@ export function EstimateDetailModal({ estimateId, isOpen, onClose, onSuccess }: 
       ]);
 
       if (laborRatesRes.data) {
-        const profile = laborRatesRes.data;
+        const profileData = laborRatesRes.data;
         const rates = [
-          { key: 'standard', name: 'Standard Rate', rate: Number(profile.standard_rate) },
-          { key: 'after_hours', name: 'After-Hours Rate', rate: Number(profile.after_hours_rate) },
-          { key: 'emergency', name: 'Emergency Rate', rate: Number(profile.emergency_rate) }
+          { key: 'standard', name: 'Standard Rate', rate: Number(profileData.standard_rate) },
+          { key: 'after_hours', name: 'After-Hours Rate', rate: Number(profileData.after_hours_rate) },
+          { key: 'emergency', name: 'Emergency Rate', rate: Number(profileData.emergency_rate) }
         ];
         setLaborRates(rates);
       }
 
-      if (partsRes.data) setParts(partsRes.data);
-      if (equipmentRes.data) setEquipment(equipmentRes.data);
+      if (partsRes.data) setParts((partsRes.data as unknown as Array<{ id: string; name: string; cost?: number | null }>));
+      if (equipmentRes.data) setEquipment((equipmentRes.data as unknown as Array<{ id: string; manufacturer: string | null; model_number: string | null }>));
     } catch (error) {
       console.error('Error loading data:', error);
     }
-  };
+  }, []);
 
-  const loadEstimateDetails = async () => {
+  const loadLinkStatus = useCallback(async () => {
+    if (!estimateId) return;
+
+    try {
+      const { data } = await supabase
+        .from('estimate_public_links')
+        .select('*')
+        .eq('estimate_id', estimateId)
+        .is('revoked_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setLinkStatus(data);
+    } catch (error) {
+      console.error('Error loading link status:', error);
+    }
+  }, [estimateId]);
+
+  const loadConversionInfo = useCallback(async () => {
+    if (!estimateId) return;
+
+    try {
+      const { data } = await supabase
+        .from('estimate_conversions')
+        .select('*')
+        .eq('estimate_id', estimateId)
+        .maybeSingle();
+
+      setConversionInfo(data);
+    } catch (error) {
+      console.error('Error loading conversion info:', error);
+    }
+  }, [estimateId]);
+
+  const loadEstimateDetails = useCallback(async () => {
     if (!estimateId) return;
 
     setLoading(true);
@@ -157,50 +185,22 @@ export function EstimateDetailModal({ estimateId, isOpen, onClose, onSuccess }: 
       if (estimateRes.error) throw estimateRes.error;
       if (lineItemsRes.error) throw lineItemsRes.error;
 
-      setEstimate(estimateRes.data);
-      setLineItems(lineItemsRes.data || []);
+      setEstimate(estimateRes.data as unknown as EstimateDetail);
+      setLineItems((lineItemsRes.data as LineItem[]) || []);
       await Promise.all([loadLinkStatus(), loadConversionInfo()]);
     } catch (error) {
       console.error('Error loading estimate details:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [estimateId, loadLinkStatus, loadConversionInfo]);
 
-  const loadLinkStatus = async () => {
-    if (!estimateId) return;
-
-    try {
-      const { data } = await supabase
-        .from('estimate_public_links')
-        .select('*')
-        .eq('estimate_id', estimateId)
-        .is('revoked_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      setLinkStatus(data);
-    } catch (error) {
-      console.error('Error loading link status:', error);
+  useEffect(() => {
+    if (isOpen && estimateId) {
+      loadEstimateDetails();
+      loadData();
     }
-  };
-
-  const loadConversionInfo = async () => {
-    if (!estimateId) return;
-
-    try {
-      const { data } = await supabase
-        .from('estimate_conversions')
-        .select('*')
-        .eq('estimate_id', estimateId)
-        .maybeSingle();
-
-      setConversionInfo(data);
-    } catch (error) {
-      console.error('Error loading conversion info:', error);
-    }
-  };
+  }, [isOpen, estimateId, loadEstimateDetails, loadData]);
 
   const handleRefreshCosts = async () => {
     if (!estimate || estimate.status !== 'draft') return;
@@ -240,7 +240,7 @@ export function EstimateDetailModal({ estimateId, isOpen, onClose, onSuccess }: 
     return { subtotal, discount, taxAmount, total };
   };
 
-  const updateLineItem = (id: string, field: keyof LineItem, value: any) => {
+  const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
     setLineItems(lineItems.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
@@ -412,7 +412,7 @@ export function EstimateDetailModal({ estimateId, isOpen, onClose, onSuccess }: 
 
     try {
       setSaving(true);
-      const updateData: any = { status: newStatus };
+      const updateData: Record<string, unknown> = { status: newStatus };
 
       if (newStatus === 'sent') {
         updateData.sent_date = new Date().toISOString();

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Factory,
   Search,
-  Filter,
   Plus,
   ChevronRight,
   Clock,
@@ -30,13 +29,8 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
     priority: '',
     search: '',
   });
-  const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [filters]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [ordersData, statsData] = await Promise.all([
@@ -54,7 +48,11 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

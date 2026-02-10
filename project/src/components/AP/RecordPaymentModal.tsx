@@ -43,7 +43,7 @@ export function RecordPaymentModal({
   onClose,
   onPaymentRecorded,
   preselectedVendorId,
-  preselectedBillId,
+  preselectedBillId: _preselectedBillId,
 }: RecordPaymentModalProps) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -65,54 +65,33 @@ export function RecordPaymentModal({
   const [allocations, setAllocations] = useState<BillAllocation[]>([]);
   const [loadingBills, setLoadingBills] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadVendors();
-      loadBankAccounts();
-      resetForm();
-    }
-  }, [isOpen]);
+  const resetForm = useCallback(() => {
+    setVendorId(preselectedVendorId || '');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentAmount('');
+    setPaymentMethod('check');
+    setReferenceNumber('');
+    setCheckNumber('');
+    setBankAccountId('');
+    setNotes('');
+    setAllocations([]);
+    setError('');
+  }, [preselectedVendorId]);
 
-  useEffect(() => {
-    if (vendorId) {
-      loadUnpaidBills();
-    } else {
-      setUnpaidBills([]);
-      setAllocations([]);
-    }
-  }, [vendorId]);
-
-  useEffect(() => {
-    // Pre-select bill if provided
-    if (preselectedBillId && allocations.length > 0) {
-      const updated = allocations.map((a) => ({
-        ...a,
-        selected: a.bill.id === preselectedBillId,
-        amount: a.bill.id === preselectedBillId ? a.bill.balance_due : 0,
-      }));
-      setAllocations(updated);
-
-      const bill = unpaidBills.find((b) => b.id === preselectedBillId);
-      if (bill) {
-        setPaymentAmount(bill.balance_due.toString());
-      }
-    }
-  }, [preselectedBillId, unpaidBills]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('vendors')
         .select('id, name, vendor_code')
         .eq('is_active', true)
         .order('name');
-      setVendors(data || []);
+      setVendors((data as unknown as Vendor[]) || []);
     } catch (err) {
       console.error('Failed to load vendors:', err);
     }
-  };
+  }, []);
 
-  const loadBankAccounts = async () => {
+  const loadBankAccounts = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('chart_of_accounts')
@@ -121,13 +100,14 @@ export function RecordPaymentModal({
         .eq('account_type', 'asset')
         .ilike('account_name', '%bank%')
         .order('account_code');
-      setBankAccounts(data || []);
+      setBankAccounts((data as unknown as BankAccount[]) || []);
     } catch (err) {
       console.error('Failed to load bank accounts:', err);
     }
-  };
+  }, []);
 
-  const loadUnpaidBills = async () => {
+  const loadUnpaidBills = useCallback(async () => {
+    if (!vendorId) return;
     setLoadingBills(true);
     try {
       const bills = await APService.getUnpaidBillsForVendor(vendorId);
@@ -144,20 +124,24 @@ export function RecordPaymentModal({
     } finally {
       setLoadingBills(false);
     }
-  };
+  }, [vendorId]);
 
-  const resetForm = () => {
-    setVendorId(preselectedVendorId || '');
-    setPaymentDate(new Date().toISOString().split('T')[0]);
-    setPaymentAmount('');
-    setPaymentMethod('check');
-    setReferenceNumber('');
-    setCheckNumber('');
-    setBankAccountId('');
-    setNotes('');
-    setAllocations([]);
-    setError('');
-  };
+  useEffect(() => {
+    if (isOpen) {
+      loadVendors();
+      loadBankAccounts();
+      resetForm();
+    }
+  }, [isOpen, loadVendors, loadBankAccounts, resetForm]);
+
+  useEffect(() => {
+    if (vendorId) {
+      loadUnpaidBills();
+    } else {
+      setUnpaidBills([]);
+      setAllocations([]);
+    }
+  }, [vendorId, loadUnpaidBills]);
 
   const toggleBillSelection = (index: number) => {
     const updated = [...allocations];

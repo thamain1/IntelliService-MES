@@ -165,7 +165,7 @@ export function NewEstimateModal({
     }
   };
 
-  const updateLineItem = (id: string, field: keyof LineItem, value: any) => {
+  const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
     setLineItems(lineItems.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
@@ -470,7 +470,7 @@ export function NewEstimateModal({
             </div>
 
             <div className="space-y-3">
-              {lineItems.map((item, index) => (
+              {lineItems.map((item, _index) => (
                 <div key={item.id} className="card p-4 bg-gray-50 dark:bg-gray-700/50">
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                     <div className="md:col-span-2">

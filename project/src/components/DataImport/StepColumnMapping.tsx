@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
-import { ImportEntityType, DataImportService, ColumnMapping } from '../../services/DataImportService';
+import { ImportEntityType, DataImportService, ColumnMapping, ImportBatch } from '../../services/DataImportService';
+import { supabase } from '../../lib/supabase';
 
 interface StepColumnMappingProps {
   entityType: ImportEntityType;
   file: File | null;
   fileContent: string;
-  parsedRows: any[];
-  onNext: (data: { mapping: ColumnMapping; batch: any; stagingRowIds: string[] }) => void;
+  parsedRows: Record<string, unknown>[];
+  onNext: (data: { mapping: ColumnMapping; batch: ImportBatch; stagingRowIds: string[] }) => void;
   onBack: () => void;
 }
 
@@ -32,7 +33,7 @@ export function StepColumnMapping({
   const [processing, setProcessing] = useState(false);
 
   // Get target fields based on entity type
-  const getTargetFields = (): TargetField[] => {
+  const getTargetFields = useCallback((): TargetField[] => {
     if (entityType === 'customers') {
       return [
         { key: 'name', label: 'Customer Name', required: true, description: 'Full company or person name' },
@@ -102,7 +103,7 @@ export function StepColumnMapping({
       ];
     }
     return [];
-  };
+  }, [entityType]);
 
   const targetFields = getTargetFields();
 
@@ -116,7 +117,7 @@ export function StepColumnMapping({
       const autoMapping = DataImportService.autoMapColumns(headers, targetFields.map(f => f.key));
       setMapping(autoMapping);
     }
-  }, [parsedRows, entityType]);
+  }, [parsedRows, targetFields]);
 
   const handleMappingChange = (targetField: string, sourceColumn: string) => {
     setMapping({
@@ -148,7 +149,7 @@ export function StepColumnMapping({
 
     try {
       // Create import batch
-      const { delimiter, encoding } = DataImportService.detectFileFormat(fileContent);
+      const { encoding } = DataImportService.detectFileFormat(fileContent);
       const batch = await DataImportService.createImportBatch(
         entityType,
         file.name,
@@ -160,7 +161,7 @@ export function StepColumnMapping({
       await DataImportService.updateImportBatch(batch.id, {
         mapping_config: mapping,
         status: 'validating',
-      } as any);
+      } as unknown as Partial<ImportBatch>);
 
       // Insert rows into staging table
       const stagingRowIds: string[] = [];
@@ -174,7 +175,7 @@ export function StepColumnMapping({
         }
 
         // Map source columns to target fields
-        const mappedRow: any = {
+        const mappedRow: Record<string, unknown> = {
           import_batch_id: batch.id,
           row_number: i + 1,
           raw_row_json: rawRow,
@@ -187,9 +188,9 @@ export function StepColumnMapping({
 
             // Normalize values based on field type
             if (field.key.includes('amount') || field.key === 'balance_due') {
-              value = DataImportService.normalizeCurrency(value);
+              value = DataImportService.normalizeCurrency(value as string);
             } else if (field.key.includes('date')) {
-              value = DataImportService.normalizeDate(value);
+              value = DataImportService.normalizeDate(value as string);
             }
 
             mappedRow[field.key] = value;
@@ -231,7 +232,7 @@ export function StepColumnMapping({
       await DataImportService.updateImportBatch(batch.id, {
         rows_total: parsedRows.length,
         status: 'validated',
-      } as any);
+      } as unknown as Partial<ImportBatch>);
 
       await DataImportService.logImportEvent(
         batch.id,
@@ -240,9 +241,10 @@ export function StepColumnMapping({
       );
 
       onNext({ mapping, batch, stagingRowIds });
-    } catch (error: any) {
-      console.error('Error processing mapping:', error);
-      alert('Failed to process import: ' + error.message);
+    } catch (err: unknown) {
+      console.error('Error processing mapping:', err);
+      const errorMessage = (err as Error)?.message || 'Unknown error';
+      alert('Failed to process import: ' + errorMessage);
     } finally {
       setProcessing(false);
     }
@@ -252,8 +254,8 @@ export function StepColumnMapping({
     return parsedRows
       .slice(0, 3)
       .map((row) => row[sourceColumn])
-      .filter((v) => v && v.toString().trim() !== '')
-      .map((v) => v.toString().substring(0, 30));
+      .filter((v) => v !== undefined && v !== null && v.toString().trim() !== '')
+      .map((v) => (v as string | number | boolean).toString().substring(0, 30));
   };
 
   return (
@@ -409,6 +411,3 @@ export function StepColumnMapping({
     </div>
   );
 }
-
-// Import supabase at the top of the file
-import { supabase } from '../../lib/supabase';

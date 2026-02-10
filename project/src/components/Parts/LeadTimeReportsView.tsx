@@ -14,12 +14,7 @@ export function LeadTimeReportsView() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedVendor, setSelectedVendor] = useState('all');
 
-  useEffect(() => {
-    loadVendors();
-    loadMetrics();
-  }, [selectedVendor]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -28,13 +23,13 @@ export function LeadTimeReportsView() {
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as unknown as Vendor[]) || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     }
-  };
+  }, []);
 
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -48,16 +43,12 @@ export function LeadTimeReportsView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedVendor]);
 
-  const _formatDate = (date: string | null) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  useEffect(() => {
+    loadVendors();
+    loadMetrics();
+  }, [loadVendors, loadMetrics]);
 
   const getPerformanceBadge = (onTimePct: number | null) => {
     if (onTimePct === null) {

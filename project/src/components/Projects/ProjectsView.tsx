@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, FolderKanban, Calendar, DollarSign, TrendingUp, Clock, Users, X, FileText, Building2, Layers, Trash2 } from 'lucide-react';
+import { Plus, Search, FolderKanban, Calendar, DollarSign, TrendingUp, Clock, X, Building2, Layers, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { ProjectDetailView } from './ProjectDetailView';
@@ -20,8 +20,8 @@ export function ProjectsView() {
   const [projectTypeFilter, setProjectTypeFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [managers, setManagers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [managers, setManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [formData, setFormData] = useState({
     project_number: '',
     name: '',
@@ -171,9 +171,10 @@ export function ProjectsView() {
       if (error) throw error;
 
       loadProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting project:', error);
-      if (error.message?.includes('foreign key')) {
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (errorMessage.includes('foreign key')) {
         alert('Cannot delete this project because it has associated records (tickets, invoices, etc.). Please remove those first.');
       } else {
         alert('Failed to delete project. Please try again.');
@@ -625,7 +626,7 @@ export function ProjectsView() {
                   </label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as 'planning' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled' })}
                     className="input"
                   >
                     <option value="planning">Planning</option>
@@ -642,7 +643,7 @@ export function ProjectsView() {
                   </label>
                   <select
                     value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' })}
                     className="input"
                   >
                     <option value="low">Low</option>

@@ -336,9 +336,12 @@ export class WarrantyService {
       if (error) throw error;
 
       return { success: true, attachment: data };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[WarrantyService] Error adding attachment:', error);
-      return { success: false, error: error.message };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'An unknown error occurred' 
+      };
     }
   }
 

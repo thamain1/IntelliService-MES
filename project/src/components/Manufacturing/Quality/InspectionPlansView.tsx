@@ -4,13 +4,10 @@ import {
   Plus,
   Pencil,
   Search,
-  Filter,
   ChevronDown,
   ChevronRight,
   Trash2,
   Copy,
-  CheckCircle2,
-  Settings,
   Target,
 } from 'lucide-react';
 import { QualityExecutionService, InspectionPlan, Characteristic, SamplingPlan } from '../../../services/QualityExecutionService';
@@ -222,7 +219,7 @@ export function InspectionPlansView() {
     }
   };
 
-  const handleAddCharacteristic = (planId: string) => {
+  const handleAddCharacteristic = (_planId: string) => {
     setEditingChar(null);
     const maxSeq = planCharacteristics.reduce((max, c) => Math.max(max, c.sequence || 0), 0);
     setCharFormData({

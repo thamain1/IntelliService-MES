@@ -5,7 +5,6 @@ import {
   Pause,
   Play,
   CheckCircle,
-  Edit,
   Package,
   Calendar,
   User,
@@ -51,11 +50,7 @@ export function ProductionOrderDetail({ orderId, onBack }: ProductionOrderDetail
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [holdReason, setHoldReason] = useState('');
 
-  useEffect(() => {
-    loadOrderData();
-  }, [orderId]);
-
-  const loadOrderData = async () => {
+  const loadOrderData = useCallback(async () => {
     setLoading(true);
     try {
       const result = await ManufacturingService.getOrderById(orderId);
@@ -71,7 +66,11 @@ export function ProductionOrderDetail({ orderId, onBack }: ProductionOrderDetail
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    loadOrderData();
+  }, [loadOrderData]);
 
   const handlePutOnHold = async () => {
     if (!holdReason.trim()) return;

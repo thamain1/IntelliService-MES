@@ -10,7 +10,7 @@ type Granularity = 'hourly' | 'daily' | 'shift';
 type ViewMode = 'overview' | 'drilldown';
 
 export function OEEDashboard() {
-  const { profile } = useAuth();
+  const { profile: _profile } = useAuth();
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
   const [selectedWorkCenter, setSelectedWorkCenter] = useState<string>('');
   const [metrics, setMetrics] = useState<OEEMetrics | null>(null);
@@ -27,29 +27,20 @@ export function OEEDashboard() {
     return { start, end };
   });
 
-  useEffect(() => {
-    loadWorkCenters();
-  }, []);
-
-  useEffect(() => {
-    if (selectedWorkCenter) {
-      loadOEEData();
-    }
-  }, [selectedWorkCenter, dateRange, granularity]);
-
-  const loadWorkCenters = async () => {
+  const loadWorkCenters = useCallback(async () => {
     try {
       const wcs = await ManufacturingService.getWorkCenters(true);
       setWorkCenters(wcs);
-      if (wcs.length > 0) {
+      if (wcs.length > 0 && !selectedWorkCenter) {
         setSelectedWorkCenter(wcs[0].id);
       }
     } catch (error) {
       console.error('Error loading work centers:', error);
     }
-  };
+  }, [selectedWorkCenter]);
 
-  const loadOEEData = async () => {
+  const loadOEEData = useCallback(async () => {
+    if (!selectedWorkCenter) return;
     try {
       setLoading(true);
       const fromDate = dateRange.start.toISOString();
@@ -67,7 +58,15 @@ export function OEEDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedWorkCenter, dateRange, granularity]);
+
+  useEffect(() => {
+    loadWorkCenters();
+  }, [loadWorkCenters]);
+
+  useEffect(() => {
+    loadOEEData();
+  }, [loadOEEData]);
 
   const handlePrevPeriod = () => {
     const days = granularity === 'hourly' ? 1 : 7;
@@ -285,7 +284,7 @@ export function OEEDashboard() {
                 <div className="space-y-4">
                   {/* Simple bar chart representation */}
                   <div className="flex items-end space-x-1 h-48">
-                    {trend.map((point, index) => (
+                    {trend.map((point) => (
                       <div
                         key={point.period_start}
                         className="flex-1 flex flex-col items-center justify-end"

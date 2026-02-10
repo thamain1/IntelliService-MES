@@ -17,6 +17,14 @@ import {
 import { CRMService, Customer360 } from '../../services/CRMService';
 import { NewInteractionModal } from './NewInteractionModal';
 
+interface EquipmentItem {
+  id: string;
+  manufacturer: string;
+  model_number: string;
+  equipment_type: string;
+  installation_date?: string;
+}
+
 interface Customer360ViewProps {
   customerId: string;
   onClose: () => void;
@@ -27,11 +35,7 @@ export function Customer360View({ customerId, onClose }: Customer360ViewProps) {
   const [data, setData] = useState<Customer360 | null>(null);
   const [showInteractionModal, setShowInteractionModal] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [customerId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const customer360 = await CRMService.getCustomer360(customerId);
@@ -41,7 +45,11 @@ export function Customer360View({ customerId, onClose }: Customer360ViewProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getEventIcon = (type: string) => {
     switch (type) {
@@ -222,7 +230,7 @@ export function Customer360View({ customerId, onClose }: Customer360ViewProps) {
                     <div className="card p-4">
                       <h3 className="font-medium text-gray-900 dark:text-white mb-3">Equipment</h3>
                       <div className="space-y-2">
-                        {equipment.map((eq: any) => (
+                        {(equipment as unknown as EquipmentItem[]).map((eq) => (
                           <div key={eq.id} className="flex items-center gap-2 text-sm">
                             <Wrench className="w-4 h-4 text-gray-400" />
                             <div>

@@ -30,11 +30,7 @@ export function DSOInsight() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMetrics();
-  }, [dateRange]);
-
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -109,7 +105,11 @@ export function DSOInsight() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [start, end]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const getExportData = useCallback((): ExportData => {
     return {

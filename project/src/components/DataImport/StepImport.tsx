@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { ImportEntityType, DataImportService, ImportBatch } from '../../services/DataImportService';
 import { supabase } from '../../lib/supabase';
@@ -42,7 +42,7 @@ export function StepImport({
     try {
       await DataImportService.updateImportBatch(importBatch.id, {
         status: 'importing',
-      } as any);
+      } as unknown as Partial<ImportBatch>);
 
       if (entityType === 'customers') {
         await importCustomers();
@@ -60,7 +60,7 @@ export function StepImport({
         status: 'completed',
         completed_at: new Date().toISOString(),
         rows_imported: summary.created + summary.updated,
-      } as any);
+      } as unknown as Partial<ImportBatch>);
 
       await DataImportService.logImportEvent(
         importBatch.id,
@@ -70,22 +70,23 @@ export function StepImport({
 
       setProgress({ ...progress, status: 'completed', message: 'Import completed successfully!' });
       setCompleted(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Import error:', error);
+      const errorMessage = (error as Error)?.message || 'Unknown error';
 
       await DataImportService.updateImportBatch(importBatch.id, {
         status: 'failed',
-        error_summary: error.message,
+        error_summary: errorMessage,
         completed_at: new Date().toISOString(),
-      } as any);
+      } as unknown as Partial<ImportBatch>);
 
       await DataImportService.logImportEvent(
         importBatch.id,
         'error',
-        'Import failed: ' + error.message
+        'Import failed: ' + errorMessage
       );
 
-      setProgress({ ...progress, status: 'failed', message: 'Import failed: ' + error.message });
+      setProgress({ ...progress, status: 'failed', message: 'Import failed: ' + errorMessage });
     } finally {
       setImporting(false);
     }
@@ -110,7 +111,7 @@ export function StepImport({
 
     let created = 0;
     let updated = 0;
-    let skipped = 0;
+    const skipped = 0;
     let errors = 0;
 
     for (let i = 0; i < (stagingRows || []).length; i++) {
@@ -199,15 +200,16 @@ export function StepImport({
 
           created++;
         }
-      } catch (error: any) {
-        console.error(`Error importing customer row ${row.row_number}:`, error);
+      } catch (err: unknown) {
+        const errorMessage = (err as Error)?.message || 'Unknown error';
+        console.error(`Error importing customer row ${row.row_number}:`, err);
         errors++;
 
         await DataImportService.logImportEvent(
           importBatch.id,
           'error',
           `Failed to import customer at row ${row.row_number}`,
-          { error: error.message, row: row.raw_row_json }
+          { error: errorMessage, row: row.raw_row_json }
         );
       }
 
@@ -330,15 +332,16 @@ export function StepImport({
           .eq('id', row.id);
 
         created++;
-      } catch (error: any) {
-        console.error(`Error importing AR row ${row.row_number}:`, error);
+      } catch (err: unknown) {
+        const errorMessage = (err as Error)?.message || 'Unknown error';
+        console.error(`Error importing AR row ${row.row_number}:`, err);
         errors++;
 
         await DataImportService.logImportEvent(
           importBatch.id,
           'error',
           `Failed to import AR at row ${row.row_number}`,
-          { error: error.message, row: row.raw_row_json }
+          { error: errorMessage, row: row.raw_row_json }
         );
       }
 
@@ -378,7 +381,7 @@ export function StepImport({
 
     let created = 0;
     let updated = 0;
-    let skipped = 0;
+    const skipped = 0;
     let errors = 0;
 
     for (let i = 0; i < (stagingRows || []).length; i++) {
@@ -466,8 +469,8 @@ export function StepImport({
 
           created++;
         }
-      } catch (error: any) {
-        console.error(`Error importing vendor row ${row.row_number}:`, error);
+      } catch (err: unknown) {
+        console.error(`Error importing vendor row ${row.row_number}:`, err);
         errors++;
       }
 
@@ -506,7 +509,7 @@ export function StepImport({
 
     let created = 0;
     let updated = 0;
-    let skipped = 0;
+    const skipped = 0;
     let errors = 0;
 
     for (let i = 0; i < (stagingRows || []).length; i++) {
@@ -577,8 +580,8 @@ export function StepImport({
 
           created++;
         }
-      } catch (error: any) {
-        console.error(`Error importing item row ${row.row_number}:`, error);
+      } catch (err: unknown) {
+        console.error(`Error importing item row ${row.row_number}:`, err);
         errors++;
       }
 
@@ -710,8 +713,8 @@ export function StepImport({
           // Payments need to be linked to invoices - skip if no matching invoice
           skipped++;
         }
-      } catch (error: any) {
-        console.error(`Error importing history row ${row.row_number}:`, error);
+      } catch (err: unknown) {
+        console.error(`Error importing history row ${row.row_number}:`, err);
         errors++;
       }
 

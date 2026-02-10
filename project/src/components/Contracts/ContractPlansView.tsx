@@ -13,11 +13,7 @@ export function ContractPlansView() {
   const [editingPlan, setEditingPlan] = useState<ContractPlan | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
 
-  useEffect(() => {
-    loadPlans();
-  }, [showInactive]);
-
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     try {
       let query = supabase.from('contract_plans').select('*').order('name');
 
@@ -28,13 +24,17 @@ export function ContractPlansView() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setPlans(data || []);
+      setPlans((data as unknown as ContractPlan[]) || []);
     } catch (error) {
       console.error('Error loading plans:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showInactive]);
+
+  useEffect(() => {
+    loadPlans();
+  }, [loadPlans]);
 
   const togglePlanStatus = async (plan: ContractPlan) => {
     try {
@@ -272,7 +272,7 @@ function EditPlanModal({ plan, onClose }: { plan: ContractPlan; onClose: () => v
           default_base_fee: parseFloat(formData.default_base_fee),
           includes_emergency_service: formData.includes_emergency_service,
           includes_after_hours_rate_reduction: formData.includes_after_hours_rate_reduction,
-          priority_level: formData.priority_level as any,
+          priority_level: formData.priority_level as unknown as Database['public']['Enums']['priority_level'],
           response_time_sla_hours: formData.response_time_sla_hours ? parseFloat(formData.response_time_sla_hours) : null,
         })
         .eq('id', plan.id);
@@ -281,9 +281,9 @@ function EditPlanModal({ plan, onClose }: { plan: ContractPlan; onClose: () => v
 
       alert('Plan updated successfully!');
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating plan:', error);
-      alert(`Failed to update plan: ${error.message}`);
+      alert(`Failed to update plan: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -396,7 +396,7 @@ function EditPlanModal({ plan, onClose }: { plan: ContractPlan; onClose: () => v
               </label>
               <select
                 value={formData.priority_level}
-                onChange={(e) => setFormData({ ...formData, priority_level: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, priority_level: e.target.value as unknown as Database['public']['Enums']['priority_level'] })}
                 className="input"
               >
                 <option value="normal">Normal</option>
@@ -484,7 +484,7 @@ function NewPlanModal({ onClose }: { onClose: () => void }) {
     default_base_fee: '0',
     includes_emergency_service: false,
     includes_after_hours_rate_reduction: false,
-    priority_level: 'normal' as const,
+    priority_level: 'normal' as Database['public']['Enums']['priority_level'],
     response_time_sla_hours: '',
   });
 
@@ -514,9 +514,9 @@ function NewPlanModal({ onClose }: { onClose: () => void }) {
 
       alert('Plan created successfully!');
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating plan:', error);
-      alert(`Failed to create plan: ${error.message}`);
+      alert(`Failed to create plan: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -629,7 +629,7 @@ function NewPlanModal({ onClose }: { onClose: () => void }) {
               </label>
               <select
                 value={formData.priority_level}
-                onChange={(e) => setFormData({ ...formData, priority_level: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, priority_level: e.target.value as unknown as Database['public']['Enums']['priority_level'] })}
                 className="input"
               >
                 <option value="normal">Normal</option>

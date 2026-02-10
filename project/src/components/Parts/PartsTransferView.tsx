@@ -25,11 +25,20 @@ export function PartsTransferView({ itemType = 'part' }: PartsTransferViewProps)
   const isTool = itemType === 'tool';
   const itemLabel = isTool ? 'Tool' : 'Part';
   const itemLabelPlural = isTool ? 'Tools' : 'Parts';
-  const ItemIcon = isTool ? Wrench : Package;
+  const _unused = isTool ? Wrench : Package; // ItemIcon not used currently
   const [locations, setLocations] = useState<StockLocation[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
   const [inventory, setInventory] = useState<PartInventory[]>([]);
-  const [movements, setMovements] = useState<any[]>([]);
+  interface InventoryMovement {
+    id: string;
+    movement_date: string;
+    quantity: number;
+    parts?: { name: string; part_number: string };
+    from_location?: { name: string };
+    to_location?: { name: string };
+    moved_by_profile?: { full_name: string };
+  }
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,11 +51,7 @@ export function PartsTransferView({ itemType = 'part' }: PartsTransferViewProps)
     notes: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, [itemType]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -86,16 +91,20 @@ export function PartsTransferView({ itemType = 'part' }: PartsTransferViewProps)
       if (inventoryRes.error) throw inventoryRes.error;
       if (movementsRes.error) throw movementsRes.error;
 
-      setLocations(locationsRes.data || []);
-      setParts(partsRes.data || []);
-      setInventory(inventoryRes.data || []);
-      setMovements(movementsRes.data || []);
+      setLocations((locationsRes.data as unknown as StockLocation[]) || []);
+      setParts((partsRes.data as unknown as Part[]) || []);
+      setInventory((inventoryRes.data as unknown as PartInventory[]) || []);
+      setMovements((movementsRes.data as unknown as InventoryMovement[]) || []);
     } catch (error) {
       console.error('Error loading transfer data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [itemType]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getAvailableQuantity = (partId: string, locationId: string) => {
     const item = inventory.find(

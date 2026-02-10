@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Clock, AlertTriangle, ChevronDown, ChevronUp, TrendingDown } from 'lucide-react';
 import { DowntimeService, DowntimeParetoItem, DowntimeEvent } from '../../../services/DowntimeService';
 
@@ -23,11 +23,7 @@ export function OEEDowntimeDrilldown({
   const [loading, setLoading] = useState(true);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [workCenterId, fromDate, toDate, paretoView]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const fromDateStr = fromDate.toISOString();
@@ -61,7 +57,11 @@ export function OEEDowntimeDrilldown({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workCenterId, fromDate, toDate, paretoView]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${Math.round(minutes)}m`;

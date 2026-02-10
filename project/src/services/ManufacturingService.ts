@@ -373,9 +373,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true, order: data as ProductionOrder };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating production order:', error);
-      return { success: false, error: error.message || 'Failed to create order' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to create order' 
+      };
     }
   }
 
@@ -411,9 +414,12 @@ export class ManufacturingService {
         scheduled_start: options?.scheduled_start,
         assigned_to: options?.assigned_to,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating order from ticket:', error);
-      return { success: false, error: error.message || 'Failed to create order from ticket' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to create order from ticket' 
+      };
     }
   }
 
@@ -433,9 +439,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating production order:', error);
-      return { success: false, error: error.message || 'Failed to update order' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to update order' 
+      };
     }
   }
 
@@ -532,9 +541,12 @@ export class ManufacturingService {
           })),
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error completing order:', error);
-      return { success: false, error: error.message || 'Failed to complete order' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to complete order' 
+      };
     }
   }
 
@@ -571,9 +583,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true, step: data as ProductionStep };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding step:', error);
-      return { success: false, error: error.message || 'Failed to add step' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to add step' 
+      };
     }
   }
 
@@ -617,9 +632,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating step status:', error);
-      return { success: false, error: error.message || 'Failed to update step status' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to update step status' 
+      };
     }
   }
 
@@ -636,9 +654,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting step:', error);
-      return { success: false, error: error.message || 'Failed to delete step' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to delete step' 
+      };
     }
   }
 
@@ -664,9 +685,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true, item: data as BOMItem };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding BOM item:', error);
-      return { success: false, error: error.message || 'Failed to add BOM item' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to add BOM item' 
+      };
     }
   }
 
@@ -683,9 +707,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing BOM item:', error);
-      return { success: false, error: error.message || 'Failed to remove BOM item' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to remove BOM item' 
+      };
     }
   }
 
@@ -710,9 +737,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error allocating BOM item:', error);
-      return { success: false, error: error.message || 'Failed to allocate BOM item' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to allocate BOM item' 
+      };
     }
   }
 
@@ -799,9 +829,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true, timeLogId: data.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error clocking in:', error);
-      return { success: false, error: error.message || 'Failed to clock in' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to clock in' 
+      };
     }
   }
 
@@ -826,9 +859,12 @@ export class ManufacturingService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error clocking out:', error);
-      return { success: false, error: error.message || 'Failed to clock out' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to clock out' 
+      };
     }
   }
 
