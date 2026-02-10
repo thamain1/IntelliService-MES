@@ -757,7 +757,7 @@ export class ManufacturingService {
         .from('work_centers')
         .select(`
           *,
-          default_technician:profiles(id, full_name)
+          default_technician:profiles!work_centers_default_technician_id_fkey(id, full_name)
         `)
         .order('code', { ascending: true });
 
