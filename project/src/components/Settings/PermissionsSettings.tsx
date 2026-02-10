@@ -106,7 +106,8 @@ const DEFAULT_ROLE_LABELS: Record<string, string> = {
 };
 
 export function PermissionsSettings() {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>(DEFAULT_ROLE_PERMISSIONS);
   const [roleLabels, setRoleLabels] = useState<Record<string, string>>(DEFAULT_ROLE_LABELS);
   const [selectedRole, setSelectedRole] = useState<string>('technician');
@@ -247,8 +248,14 @@ export function PermissionsSettings() {
           <div>
             <h3 className="font-medium text-blue-900 dark:text-blue-100">About Role Permissions</h3>
             <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-              Configure what each role can access in the system. Administrators have full access and cannot be modified.
+              Configure what each role can access in the system. Only administrators can modify permissions.
               Changes apply to all users with the selected role.
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              Your role: <span className="font-semibold">{profile?.role || 'Loading...'}</span>
+              {!isAdmin && !authLoading && (
+                <span className="ml-2 text-amber-600 dark:text-amber-400">(Admin access required to edit)</span>
+              )}
             </p>
           </div>
         </div>
@@ -317,12 +324,12 @@ export function PermissionsSettings() {
                     </div>
                     <button
                       onClick={() => togglePermission(selectedRole, permission.id)}
-                      disabled={profile?.role !== 'admin'}
+                      disabled={authLoading || !isAdmin}
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                         hasPermission(selectedRole, permission.id)
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
-                      } ${profile?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
+                      } ${(authLoading || !isAdmin) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
                     >
                       {hasPermission(selectedRole, permission.id) ? (
                         <Check className="w-4 h-4" />
