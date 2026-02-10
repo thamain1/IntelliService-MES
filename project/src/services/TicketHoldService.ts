@@ -19,7 +19,7 @@ export interface ReportIssuePayload {
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   summary?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface HoldResponse {

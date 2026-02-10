@@ -234,7 +234,7 @@ export class ReconciliationService {
 
     // Combine and format
     const allEntries = [
-      ...(clearedEntries || []).map((entry: any) => ({
+      ...(clearedEntries || []).map((entry: { debit_amount: number; credit_amount: number }) => ({
         ...entry,
         net_amount: entry.debit_amount > 0 ? entry.debit_amount : -entry.credit_amount,
       })),
@@ -254,7 +254,7 @@ export class ReconciliationService {
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id;
 
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       reconciliation_id: reconciliationId,
     };
 
@@ -284,7 +284,7 @@ export class ReconciliationService {
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id;
 
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       reconciliation_id: reconciliationId,
     };
 
@@ -452,11 +452,11 @@ export class ReconciliationService {
     const reconciliation = await this.getReconciliation(params.reconciliation_id);
 
     // Generate entry number
-    const { data: entryCount } = await supabase
+    const { count: entryCount } = await supabase
       .from('gl_entries')
       .select('id', { count: 'exact', head: true });
 
-    const entryNumber = `JE-${String((entryCount as any)?.count || 0).padStart(6, '0')}`;
+    const entryNumber = `JE-${String(entryCount || 0).padStart(6, '0')}`;
 
     // Create GL entries (debit and credit)
     const glEntries = [
@@ -493,7 +493,7 @@ export class ReconciliationService {
 
     // Find the cash/bank account entry and mark it as cleared
     const cashEntry = createdEntries?.find(
-      (e: any) => e.account_id === reconciliation.account_id
+      (e: { id: string; account_id: string }) => e.account_id === reconciliation.account_id
     );
 
     if (cashEntry) {

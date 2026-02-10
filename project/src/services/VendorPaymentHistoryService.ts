@@ -61,15 +61,15 @@ export class VendorPaymentHistoryService {
         throw new Error(`Failed to fetch vendor AP KPIs: ${error.message}`);
       }
 
-      return (data || []).map((row: any) => ({
-        vendorId: row.vendor_id,
-        vendorName: row.vendor_name || 'Unknown Vendor',
-        totalPaid: parseFloat(row.total_paid || 0),
-        pendingBalance: parseFloat(row.pending_balance || 0),
-        overdueBalance: parseFloat(row.overdue_balance || 0),
-        billCount: parseInt(row.bill_count || 0),
-        paidBillCount: parseInt(row.paid_bill_count || 0),
-        overdueBillCount: parseInt(row.overdue_bill_count || 0),
+      return (data || []).map((row: Record<string, unknown>) => ({
+        vendorId: row.vendor_id as string,
+        vendorName: (row.vendor_name as string) || 'Unknown Vendor',
+        totalPaid: parseFloat(String(row.total_paid || 0)),
+        pendingBalance: parseFloat(String(row.pending_balance || 0)),
+        overdueBalance: parseFloat(String(row.overdue_balance || 0)),
+        billCount: parseInt(String(row.bill_count || 0)),
+        paidBillCount: parseInt(String(row.paid_bill_count || 0)),
+        overdueBillCount: parseInt(String(row.overdue_bill_count || 0)),
       }));
     } catch (error) {
       console.error('Error in getVendorApKpis:', error);
@@ -115,23 +115,23 @@ export class VendorPaymentHistoryService {
         throw new Error(`Failed to fetch payment history: ${error.message}`);
       }
 
-      return (data || []).map((row: any) => ({
-        documentId: row.document_id,
-        documentType: row.document_type,
-        vendorId: row.vendor_id,
-        vendorName: row.vendor_name || 'Unknown Vendor',
-        documentNumber: row.document_number,
-        documentDate: row.document_date,
-        dueDate: row.due_date,
-        amount: parseFloat(row.amount || 0),
-        openBalance: parseFloat(row.open_balance || 0),
-        status: row.status,
-        paymentMethod: row.payment_method,
-        reference: row.reference,
-        category: row.category,
-        description: row.description,
-        isOverdue: row.is_overdue || false,
-        createdAt: row.created_at,
+      return (data || []).map((row: Record<string, unknown>) => ({
+        documentId: row.document_id as string,
+        documentType: row.document_type as string,
+        vendorId: row.vendor_id as string,
+        vendorName: (row.vendor_name as string) || 'Unknown Vendor',
+        documentNumber: row.document_number as string,
+        documentDate: row.document_date as string,
+        dueDate: row.due_date as string | null,
+        amount: parseFloat(String(row.amount || 0)),
+        openBalance: parseFloat(String(row.open_balance || 0)),
+        status: row.status as string,
+        paymentMethod: row.payment_method as string | null,
+        reference: row.reference as string | null,
+        category: row.category as string | null,
+        description: row.description as string | null,
+        isOverdue: (row.is_overdue as boolean) || false,
+        createdAt: row.created_at as string,
       }));
     } catch (error) {
       console.error('Error in getVendorPaymentHistory:', error);

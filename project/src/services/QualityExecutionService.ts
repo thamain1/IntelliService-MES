@@ -328,7 +328,7 @@ class QualityExecutionServiceClass {
 
   async createInspectionPlan(input: Partial<InspectionPlan>): Promise<InspectionPlan> {
     // Map compatibility fields
-    const plan: any = {
+    const plan: Record<string, unknown> = {
       name: input.name,
       plan_type: input.plan_type,
       revision: input.version || input.revision || '1.0',
@@ -357,7 +357,7 @@ class QualityExecutionServiceClass {
 
   async updateInspectionPlan(id: string, updates: Partial<InspectionPlan>): Promise<InspectionPlan> {
     // Map compatibility fields
-    const dbUpdates: any = {
+    const dbUpdates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -451,7 +451,7 @@ class QualityExecutionServiceClass {
 
   async updateCharacteristic(id: string, updates: Partial<Characteristic>): Promise<Characteristic> {
     // Map compatibility fields to database fields
-    const dbUpdates: any = {
+    const dbUpdates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -1138,7 +1138,7 @@ class QualityExecutionServiceClass {
     return data || [];
   }
 
-  async getNCRSummary(): Promise<any[]> {
+  async getNCRSummary(): Promise<Record<string, unknown>[]> {
     const { data, error } = await supabase
       .from('vw_quality_ncr_summary')
       .select('*')
@@ -1148,7 +1148,7 @@ class QualityExecutionServiceClass {
     return data || [];
   }
 
-  async getDefectPareto(): Promise<any[]> {
+  async getDefectPareto(): Promise<Record<string, unknown>[]> {
     const { data, error } = await supabase
       .from('vw_quality_defect_pareto')
       .select('*')

@@ -51,7 +51,7 @@ export interface SPCRuleViolation {
   subgroup_id?: string;
   violation_type: SPCViolationType;
   detected_at: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   acknowledged_by?: string;
   acknowledged_at?: string;
   acknowledgment_notes?: string;
@@ -111,16 +111,16 @@ const A2_FACTORS: Record<number, number> = {
   6: 0.483, 7: 0.419, 8: 0.373, 9: 0.337, 10: 0.308
 };
 
-const D3_FACTORS: Record<number, number> = {
+const _D3_FACTORS: Record<number, number> = {
   2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0.076, 8: 0.136, 9: 0.184, 10: 0.223
 };
 
-const D4_FACTORS: Record<number, number> = {
+const _D4_FACTORS: Record<number, number> = {
   2: 3.267, 3: 2.575, 4: 2.282, 5: 2.115,
   6: 2.004, 7: 1.924, 8: 1.864, 9: 1.816, 10: 1.777
 };
 
-const d2_FACTORS: Record<number, number> = {
+const _d2_FACTORS: Record<number, number> = {
   2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326,
   6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078
 };
@@ -325,7 +325,7 @@ class SPCServiceClass {
 
   private calculateControlLimits(
     subgroups: SPCSubgroup[],
-    characteristic: any
+    characteristic: { usl?: number | null; lsl?: number | null; target_value?: number | null }
   ): ControlLimits {
     if (subgroups.length === 0) {
       return {
@@ -371,7 +371,7 @@ class SPCServiceClass {
 
   calculateProcessCapability(
     subgroups: SPCSubgroup[],
-    characteristic: any
+    characteristic: { usl?: number | null; lsl?: number | null; target_value?: number | null }
   ): ProcessCapability | undefined {
     if (!characteristic.usl && !characteristic.lsl) {
       // Can't calculate capability without spec limits
@@ -599,7 +599,7 @@ class SPCServiceClass {
     characteristicId: string,
     subgroupId: string,
     violationType: SPCViolationType,
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): Promise<SPCRuleViolation> {
     const { data, error } = await supabase
       .from('spc_rule_violations')

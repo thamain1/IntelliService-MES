@@ -253,7 +253,7 @@ export class RateService {
         return { isValid: false, currentRate: 0, snapshotRate: 0 };
       }
 
-      const ticket = timeLog.ticket as any;
+      const ticket = timeLog.ticket as unknown as { customer_id?: string } | null;
       if (!ticket) {
         return {
           isValid: false,

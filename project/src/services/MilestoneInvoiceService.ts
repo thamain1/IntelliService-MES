@@ -158,7 +158,7 @@ export class MilestoneInvoiceService {
       throw new Error('No deposit invoices found for this project');
     }
 
-    const firstDepositInvoice = depositInvoices[0].invoices as any;
+    const firstDepositInvoice = depositInvoices[0].invoices as unknown as { id: string };
     const firstDepositLineItem = depositInvoices[0];
 
     const { data: depositRelease, error: releaseError } = await supabase

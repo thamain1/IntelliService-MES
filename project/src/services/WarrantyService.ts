@@ -170,9 +170,9 @@ export class WarrantyService {
       if (error) throw error;
 
       return { success: true, claim: data };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[WarrantyService] Error creating claim:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create claim' };
     }
   }
 
@@ -192,9 +192,9 @@ export class WarrantyService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[WarrantyService] Error updating claim:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update claim' };
     }
   }
 
@@ -217,9 +217,9 @@ export class WarrantyService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[WarrantyService] Error submitting claim:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to submit claim' };
     }
   }
 
@@ -249,9 +249,9 @@ export class WarrantyService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[WarrantyService] Error reviewing claim:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to review claim' };
     }
   }
 
@@ -272,9 +272,9 @@ export class WarrantyService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[WarrantyService] Error completing claim:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to complete claim' };
     }
   }
 

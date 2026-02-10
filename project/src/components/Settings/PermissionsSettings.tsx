@@ -132,7 +132,7 @@ export function PermissionsSettings() {
         
         // Update labels if we have new roles from DB
         const newLabels = { ...DEFAULT_ROLE_LABELS };
-        data.forEach((rp: any) => {
+        data.forEach((rp: { role: string }) => {
           if (!newLabels[rp.role]) {
             newLabels[rp.role] = rp.role.split('_').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
           }
