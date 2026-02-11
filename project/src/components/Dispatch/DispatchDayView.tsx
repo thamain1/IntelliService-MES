@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Clock, User, AlertCircle, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Clock, User, AlertCircle, ChevronLeft, ChevronRight, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { TicketDetailModal } from './TicketDetailModal';
 import { ConflictWarningModal } from './ConflictWarningModal';
-import { ViewModeDropdown, type ViewAction } from './ViewModeDropdown';
 import { checkForConflicts, getAllConflictsForDate, type ConflictingTicket } from '../../services/ScheduleConflictService';
 
 type TicketAssignment = {
@@ -19,29 +18,15 @@ type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   ticket_assignments?: TicketAssignment[];
 };
 
-// Helper to get effective assigned tech name
-const getAssignedTechName = (ticket: Ticket): string | null => {
-  if (ticket.profiles?.full_name) {
-    return ticket.profiles.full_name;
-  }
-  if (ticket.ticket_assignments && ticket.ticket_assignments.length > 0) {
-    const lead = ticket.ticket_assignments.find(ta => ta.role === 'lead');
-    if (lead?.profiles?.full_name) return lead.profiles.full_name;
-    const first = ticket.ticket_assignments[0];
-    if (first?.profiles?.full_name) return first.profiles.full_name;
-  }
-  return null;
-};
-
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
-interface DispatchBoardProps {
+interface DispatchDayViewProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
-  onViewModeChange?: (mode: 'calendar' | 'day' | 'week') => void;
+  onBackToCalendar: () => void;
 }
 
-export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: DispatchBoardProps) {
+export function DispatchDayView({ selectedDate, onDateChange, onBackToCalendar }: DispatchDayViewProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [technicians, setTechnicians] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +76,7 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
       setTickets(allTickets as Ticket[]);
       setTechnicians(techsResult.data || []);
     } catch (error) {
-      console.error('Error loading dispatch board data:', error);
+      console.error('Error loading dispatch day view data:', error);
     } finally {
       setLoading(false);
     }
@@ -124,18 +109,6 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
     onDateChange(newDate);
   };
 
-  const goToToday = () => {
-    onDateChange(new Date());
-  };
-
-  const handleViewModeAction = (action: ViewAction) => {
-    if (action === 'today') {
-      onDateChange(new Date());
-    } else if (onViewModeChange) {
-      onViewModeChange(action);
-    }
-  };
-
   const handleDragStart = (ticket: Ticket) => {
     setDraggedTicket(ticket);
   };
@@ -153,7 +126,6 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
     const duration = draggedTicket.estimated_duration || 120;
     const proposedEnd = new Date(scheduledDate.getTime() + duration * 60 * 1000);
 
-    // Check for conflicts
     const conflictResult = await checkForConflicts({
       technicianId,
       proposedStart: scheduledDate,
@@ -162,7 +134,6 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
     });
 
     if (conflictResult.hasConflict) {
-      // Show conflict warning modal
       setPendingAssignment({
         ticket: draggedTicket,
         technicianId,
@@ -174,7 +145,6 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
       return;
     }
 
-    // No conflict, proceed with assignment
     await executeAssignment(draggedTicket, technicianId, timeSlot);
     setDraggedTicket(null);
   };
@@ -195,29 +165,15 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
         .select()
         .single();
 
-      if (error) {
-        console.error('Supabase error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
-        throw error;
-      }
-
-      if (!data) {
-        throw new Error('No ticket was updated. You may not have permission to modify this ticket.');
-      }
+      if (error) throw error;
+      if (!data) throw new Error('No ticket was updated.');
 
       await loadData();
       await loadConflicts();
     } catch (error: unknown) {
       console.error('Error updating ticket:', error);
-      let errorMessage = 'Failed to assign ticket. Please try again.';
-      const err = error as { message?: string; code?: string };
-      if (err?.message) {
-        if (err.message.includes('permission denied') || err.message.includes('policy') || err.code === 'PGRST116') {
-          errorMessage = 'You do not have permission to update this ticket. Please contact your administrator.';
-        } else {
-          errorMessage = `Failed to assign ticket: ${err.message}`;
-        }
-      }
-      alert(errorMessage);
+      const err = error as { message?: string };
+      alert(err?.message || 'Failed to assign ticket. Please try again.');
     }
   };
 
@@ -301,14 +257,22 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <button
-          onClick={previousDay}
-          className="btn btn-outline p-2"
-          aria-label="Previous day"
+          onClick={onBackToCalendar}
+          className="btn btn-outline flex items-center space-x-2"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Calendar</span>
         </button>
 
         <div className="flex items-center space-x-4">
+          <button
+            onClick={previousDay}
+            className="btn btn-outline p-2"
+            aria-label="Previous day"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             {selectedDate.toLocaleDateString('en-US', {
               weekday: 'long',
@@ -317,15 +281,13 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
               year: 'numeric',
             })}
           </h2>
-          <ViewModeDropdown
-            onSelectAction={handleViewModeAction}
-            currentView="calendar"
-          />
+
+          <button onClick={nextDay} className="btn btn-outline p-2" aria-label="Next day">
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
 
-        <button onClick={nextDay} className="btn btn-outline p-2" aria-label="Next day">
-          <ChevronRight className="w-5 h-5" />
-        </button>
+        <div className="w-[150px]"></div>
       </div>
 
       <div className="grid grid-cols-12 gap-4">
@@ -357,14 +319,6 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                     {ticket.customers?.name}
                   </p>
-                  {getAssignedTechName(ticket) && (
-                    <div className="flex items-center space-x-1 mt-1">
-                      <User className="w-3 h-3 text-blue-500" />
-                      <span className="text-xs text-blue-600 dark:text-blue-400">
-                        {getAssignedTechName(ticket)}
-                      </span>
-                    </div>
-                  )}
                   <div className="flex items-center space-x-1 mt-2">
                     <Clock className="w-3 h-3 text-gray-400" />
                     <span className="text-xs text-gray-600 dark:text-gray-400">
@@ -406,7 +360,7 @@ export function DispatchBoard({ selectedDate, onDateChange, onViewModeChange }: 
                       </span>
                     </div>
                     <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {tickets.filter((t) => t.assigned_to === tech.id).length} jobs
+                      {tickets.filter((t) => t.assigned_to === tech.id && t.scheduled_date).length} jobs
                     </span>
                   </div>
                 </div>

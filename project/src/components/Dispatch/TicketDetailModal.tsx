@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { CodeSelector } from '../CRM/CodeSelector';
 import { useFeature } from '../../hooks/useFeature';
 import { SendToShopModal } from '../Manufacturing/SendToShopModal';
+import { checkForConflicts, type ConflictingTicket } from '../../services/ScheduleConflictService';
 import type { Database } from '../../lib/database.types';
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
@@ -61,6 +62,11 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
   const [showNeedPartsModal, setShowNeedPartsModal] = useState(false);
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
   const [showSendToShopModal, setShowSendToShopModal] = useState(false);
+
+  // Conflict warning state
+  const [showConflictWarning, setShowConflictWarning] = useState(false);
+  const [conflictingTickets, setConflictingTickets] = useState<ConflictingTicket[]>([]);
+  const [pendingTechnicianAssignment, setPendingTechnicianAssignment] = useState<typeof newAssignment | null>(null);
 
   // Feature flags
   const { enabled: mesEnabled } = useFeature('module_mes');
@@ -161,10 +167,32 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
     }
   }, [isOpen, ticketId, loadTicket, loadAssignments, loadTechnicians]);
 
-  const handleAddAssignment = async () => {
+  const handleAddAssignment = async (skipConflictCheck = false) => {
     if (!newAssignment.technician_id) {
       alert('Please select a technician');
       return;
+    }
+
+    // Check for conflicts if scheduled times are provided
+    if (!skipConflictCheck && newAssignment.scheduled_start) {
+      const proposedStart = new Date(newAssignment.scheduled_start);
+      const proposedEnd = newAssignment.scheduled_end
+        ? new Date(newAssignment.scheduled_end)
+        : new Date(proposedStart.getTime() + (ticket?.estimated_duration || 120) * 60 * 1000);
+
+      const conflictResult = await checkForConflicts({
+        technicianId: newAssignment.technician_id,
+        proposedStart,
+        proposedEnd,
+        excludeTicketId: ticketId,
+      });
+
+      if (conflictResult.hasConflict) {
+        setConflictingTickets(conflictResult.conflictingTickets);
+        setPendingTechnicianAssignment({ ...newAssignment });
+        setShowConflictWarning(true);
+        return;
+      }
     }
 
     try {
@@ -187,11 +215,55 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
         scheduled_end: '',
       });
       setShowAddTechnician(false);
+      setShowConflictWarning(false);
+      setPendingTechnicianAssignment(null);
       loadAssignments();
     } catch (error) {
       console.error('Error adding assignment:', error);
       alert('Failed to add technician assignment. Please try again.');
     }
+  };
+
+  const handleConflictConfirmAssignment = async () => {
+    if (pendingTechnicianAssignment) {
+      const savedAssignment = { ...pendingTechnicianAssignment };
+      setNewAssignment(savedAssignment);
+      setShowConflictWarning(false);
+      setPendingTechnicianAssignment(null);
+
+      // Execute the assignment with skipConflictCheck = true
+      try {
+        const { error } = await supabase
+          .from('ticket_assignments')
+          .insert({
+            ticket_id: ticketId,
+            technician_id: savedAssignment.technician_id,
+            role: savedAssignment.role || null,
+            scheduled_start: savedAssignment.scheduled_start || null,
+            scheduled_end: savedAssignment.scheduled_end || null,
+          });
+
+        if (error) throw error;
+
+        setNewAssignment({
+          technician_id: '',
+          role: '',
+          scheduled_start: '',
+          scheduled_end: '',
+        });
+        setShowAddTechnician(false);
+        loadAssignments();
+      } catch (error) {
+        console.error('Error adding assignment:', error);
+        alert('Failed to add technician assignment. Please try again.');
+      }
+    }
+  };
+
+  const handleConflictCancelAssignment = () => {
+    setShowConflictWarning(false);
+    setPendingTechnicianAssignment(null);
+    setConflictingTickets([]);
   };
 
   const handleRemoveAssignment = async (assignmentId: string) => {
@@ -1184,6 +1256,104 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
             onUpdate();
           }}
         />
+      )}
+
+      {/* Conflict Warning Modal */}
+      {showConflictWarning && pendingTechnicianAssignment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full shadow-xl">
+            <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 px-6 py-4 flex items-center justify-between rounded-t-lg">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-yellow-800 dark:text-yellow-200">
+                    Schedule Conflict Detected
+                  </h2>
+                  <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                    Double-booking warning
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleConflictCancelAssignment}
+                className="p-2 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Assigning{' '}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {technicians.find(t => t.id === pendingTechnicianAssignment.technician_id)?.full_name}
+                </span>{' '}
+                to this ticket will overlap with {conflictingTickets.length} existing ticket
+                {conflictingTickets.length > 1 ? 's' : ''}.
+              </p>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Conflicting Tickets:
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {conflictingTickets.map((ticket) => (
+                    <div
+                      key={ticket.ticketId}
+                      className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold text-red-800 dark:text-red-300">
+                            {ticket.ticketNumber}
+                          </span>
+                          {ticket.customerName && (
+                            <span className="text-red-600 dark:text-red-400 text-sm ml-2">
+                              - {ticket.customerName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center text-red-600 dark:text-red-400 text-sm">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {ticket.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} -{' '}
+                          {ticket.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <p className="text-sm text-red-700 dark:text-red-300 mt-1 line-clamp-1">
+                        {ticket.title}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <AlertTriangle className="w-4 h-4 inline mr-1" />
+                  This technician may not be able to complete all jobs on time.
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end space-x-3">
+              <button
+                onClick={handleConflictCancelAssignment}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConflictConfirmAssignment}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Assign Anyway
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

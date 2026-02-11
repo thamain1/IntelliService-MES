@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, List, Grid, Clock, X, LayoutGrid, Filter, Package, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Grid, Clock, X, LayoutGrid, Filter, Package, AlertCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { TicketDetailModal } from './TicketDetailModal';
 import { DispatchBoard } from './DispatchBoard';
+import { DispatchDayView } from './DispatchDayView';
+import { DispatchWeekView } from './DispatchWeekView';
+import { ViewModeDropdown, type ViewAction } from './ViewModeDropdown';
+import { getConflictsForDateRange } from '../../services/ScheduleConflictService';
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customers?: { name: string };
@@ -16,11 +20,13 @@ export function DispatchView() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'calendar' | 'list' | 'board'>('calendar');
+  const [subViewMode, setSubViewMode] = useState<'calendar' | 'day' | 'week'>('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [heldTicketsCount, setHeldTicketsCount] = useState({ parts: 0, issues: 0 });
   const [holdFilter, setHoldFilter] = useState<HoldFilter | null>(null);
+  const [conflictsByDate, setConflictsByDate] = useState<Map<string, number>>(new Map());
 
   const loadTickets = useCallback(async () => {
     try {
@@ -77,10 +83,23 @@ export function DispatchView() {
     }
   }, []);
 
+  const loadConflicts = useCallback(async () => {
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const conflicts = await getConflictsForDateRange(startOfMonth, endOfMonth);
+    setConflictsByDate(conflicts);
+  }, [currentDate]);
+
   useEffect(() => {
     loadTickets();
     loadHeldTickets();
   }, [loadTickets, loadHeldTickets]);
+
+  useEffect(() => {
+    if (!loading && viewMode === 'calendar') {
+      loadConflicts();
+    }
+  }, [loading, viewMode, loadConflicts]);
 
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();
@@ -126,6 +145,28 @@ export function DispatchView() {
   const goToToday = () => {
     setCurrentDate(new Date());
   };
+
+  const handleViewModeAction = (action: ViewAction) => {
+    if (action === 'today') {
+      setCurrentDate(new Date());
+      setSubViewMode('calendar');
+    } else if (action === 'day') {
+      setSubViewMode('day');
+    } else if (action === 'week') {
+      setSubViewMode('week');
+    }
+  };
+
+  const handleBackToCalendar = () => {
+    setSubViewMode('calendar');
+  };
+
+  const handleNavigateToDayView = (date: Date) => {
+    setCurrentDate(date);
+    setSubViewMode('day');
+  };
+
+  const getDateKey = (date: Date) => date.toISOString().split('T')[0];
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -282,6 +323,23 @@ export function DispatchView() {
         <DispatchBoard
           selectedDate={currentDate}
           onDateChange={setCurrentDate}
+          onViewModeChange={(mode) => {
+            setViewMode('calendar');
+            setSubViewMode(mode);
+          }}
+        />
+      ) : subViewMode === 'day' ? (
+        <DispatchDayView
+          selectedDate={currentDate}
+          onDateChange={setCurrentDate}
+          onBackToCalendar={handleBackToCalendar}
+        />
+      ) : subViewMode === 'week' ? (
+        <DispatchWeekView
+          selectedDate={currentDate}
+          onDateChange={setCurrentDate}
+          onBackToCalendar={handleBackToCalendar}
+          onNavigateToDayView={handleNavigateToDayView}
         />
       ) : (
         <div className="card p-6">
@@ -296,9 +354,10 @@ export function DispatchView() {
 
             <div className="flex items-center space-x-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{monthYear}</h2>
-              <button onClick={goToToday} className="btn btn-outline">
-                Today
-              </button>
+              <ViewModeDropdown
+                onSelectAction={handleViewModeAction}
+                currentView={subViewMode}
+              />
             </div>
 
             <button onClick={nextMonth} className="btn btn-outline p-2" aria-label="Next month">
@@ -327,6 +386,8 @@ export function DispatchView() {
                 day.getDate() === new Date().getDate() &&
                 day.getMonth() === new Date().getMonth() &&
                 day.getFullYear() === new Date().getFullYear();
+              const dateKey = getDateKey(day);
+              const conflictCount = conflictsByDate.get(dateKey) || 0;
 
               return (
                 <div
@@ -334,12 +395,22 @@ export function DispatchView() {
                   className={`min-h-32 p-2 border-2 rounded-lg ${
                     isToday
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700'
+                      : conflictCount > 0
+                        ? 'border-red-300 dark:border-red-700'
+                        : 'border-gray-200 dark:border-gray-700'
                   } hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer`}
                   onClick={() => setSelectedDay(day)}
                 >
-                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                    {day.getDate()}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {day.getDate()}
+                    </span>
+                    {conflictCount > 0 && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full" title={`${conflictCount} scheduling conflicts`}>
+                        <AlertTriangle className="w-3 h-3 mr-0.5" />
+                        {conflictCount}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1">
                     {dayTickets.slice(0, 3).map((ticket) => (
