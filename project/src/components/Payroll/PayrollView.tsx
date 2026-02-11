@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, DollarSign, Users, AlertCircle, Download, FileText, Settings, BookOpen } from 'lucide-react';
+import { Plus, DollarSign, Users, AlertCircle, Download, FileText, Settings, BookOpen, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { PayrollService } from '../../services/PayrollService';
 import { PayrollStatsCards } from './PayrollStatsCards';
@@ -7,6 +7,13 @@ import { PayrollRunsTable } from './PayrollRunsTable';
 import { PayrollDetailsTable } from './PayrollDetailsTable';
 import { NewPayPeriodModal } from './NewPayPeriodModal';
 import { NewDeductionModal } from './NewDeductionModal';
+import {
+  PayrollSummaryReport,
+  TaxReport,
+  EmployeeEarningsReport,
+  DeductionsReport,
+  PayrollExportView
+} from './reports';
 
 type PayrollRun = {
   id: string;
@@ -72,6 +79,7 @@ export function PayrollView({ initialView = 'runs' }: PayrollViewProps) {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showDeductionModal, setShowDeductionModal] = useState(false);
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
+  const [selectedReport, setSelectedReport] = useState<'summary' | 'tax' | 'earnings' | 'deductions' | 'export' | null>(null);
 
   const [periodFormData, setPeriodFormData] = useState({
     period_start_date: '',
@@ -653,66 +661,101 @@ export function PayrollView({ initialView = 'runs' }: PayrollViewProps) {
       )}
 
       {activeTab === 'reports' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="card p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-100 dark:bg-blue-900/20 text-blue-600 p-4 rounded-lg">
-                <FileText className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Payroll Summary</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Period-by-period breakdown</p>
-              </div>
-            </div>
-          </div>
+        <div className="space-y-6">
+          {selectedReport ? (
+            <div className="space-y-4">
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="btn btn-outline flex items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Reports</span>
+              </button>
 
-          <div className="card p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-4">
-              <div className="bg-green-100 dark:bg-green-900/20 text-green-600 p-4 rounded-lg">
-                <DollarSign className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tax Report</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Tax withholdings and filings</p>
-              </div>
+              {selectedReport === 'summary' && <PayrollSummaryReport />}
+              {selectedReport === 'tax' && <TaxReport />}
+              {selectedReport === 'earnings' && <EmployeeEarningsReport />}
+              {selectedReport === 'deductions' && <DeductionsReport />}
+              {selectedReport === 'export' && <PayrollExportView />}
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div
+                className="card p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => setSelectedReport('summary')}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="bg-blue-100 dark:bg-blue-900/20 text-blue-600 p-4 rounded-lg">
+                    <FileText className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Payroll Summary</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Period-by-period breakdown</p>
+                  </div>
+                </div>
+              </div>
 
-          <div className="card p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-4">
-              <div className="bg-purple-100 dark:bg-purple-900/20 text-purple-600 p-4 rounded-lg">
-                <Users className="w-8 h-8" />
+              <div
+                className="card p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => setSelectedReport('tax')}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="bg-green-100 dark:bg-green-900/20 text-green-600 p-4 rounded-lg">
+                    <DollarSign className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tax Report</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Tax withholdings and filings</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Employee Earnings</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">YTD earnings by employee</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="card p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-4">
-              <div className="bg-red-100 dark:bg-red-900/20 text-red-600 p-4 rounded-lg">
-                <AlertCircle className="w-8 h-8" />
+              <div
+                className="card p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => setSelectedReport('earnings')}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="bg-purple-100 dark:bg-purple-900/20 text-purple-600 p-4 rounded-lg">
+                    <Users className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Employee Earnings</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">YTD earnings by employee</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Deductions Report</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">All deductions breakdown</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="card p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-4">
-              <div className="bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 p-4 rounded-lg">
-                <Download className="w-8 h-8" />
+              <div
+                className="card p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => setSelectedReport('deductions')}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="bg-red-100 dark:bg-red-900/20 text-red-600 p-4 rounded-lg">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Deductions Report</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">All deductions breakdown</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Export Data</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Download payroll data</p>
+
+              <div
+                className="card p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => setSelectedReport('export')}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 p-4 rounded-lg">
+                    <Download className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Export Data</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Download payroll data</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
