@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Calendar, FileText, X, Filter, AlertCircle, Wallet, Download } from 'lucide-react';
+import { ExportService, ExportFormat } from '../../services/ExportService';
 import { supabase } from '../../lib/supabase';
 import { LaborRatesSettings } from './LaborRatesSettings';
 import { ReconciliationSession } from './ReconciliationSession';
@@ -168,7 +169,45 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     reference_number: '',
   });
 
-  const loadGLAccounts = useCallback(async () => {
+  useEffect(() => {
+    loadGLAccounts();
+    loadJournalEntries();
+  }, []);
+
+  // Handle initialView routing
+  useEffect(() => {
+    if (!initialView) return;
+
+    switch (initialView) {
+      case 'dashboard':
+        setActiveTab('dashboard');
+        setSelectedReport(null);
+        break;
+      case 'general-ledger':
+        setActiveTab('reports');
+        setSelectedReport('general-ledger');
+        loadGLEntries();
+        break;
+      case 'ar-ap':
+        setActiveTab('reports');
+        setSelectedReport('ar-ap');
+        loadARData();
+        loadAPData();
+        break;
+      case 'chart-of-accounts':
+        setActiveTab('accounts');
+        setSelectedReport(null);
+        break;
+      case 'reconciliations':
+        setActiveTab('reconciliations');
+        setSelectedReport(null);
+        loadReconciliationsData();
+        break;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialView]);
+
+  const loadGLAccounts = async () => {
     try {
       const { data, error } = await supabase
         .from('gl_accounts')
@@ -176,18 +215,20 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
         .order('account_number', { ascending: true });
 
       if (error) throw error;
-      setGlAccounts((data as unknown as GLAccount[]) || []);
+      setGlAccounts((data as GLAccount[]) || []);
     } catch (error) {
       console.error('Error loading GL accounts:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  const loadJournalEntries = useCallback(async () => {
+  const loadJournalEntries = async () => {
     try {
-      const { data, error } = await supabase
-        .from('journal_entries')
+      // journal_entries is a view, not a table - cast through unknown
+      // Note: profiles join removed as view doesn't have FK relationship
+      const { data, error } = await (supabase
+        .from('journal_entries') as unknown as ReturnType<typeof supabase.from<'gl_entries'>>)
         .select('*')
         .order('entry_date', { ascending: false })
         .limit(50);
@@ -197,9 +238,9 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     } catch (error) {
       console.error('Error loading journal entries:', error);
     }
-  }, []);
+  };
 
-  const loadGLEntries = useCallback(async () => {
+  const loadGLEntries = async () => {
     setGlLoading(true);
     try {
       let query = supabase
@@ -220,15 +261,83 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
       const { data, error } = await query;
       if (error) throw error;
-      setGlEntries((data as unknown as GLEntry[]) || []);
+      setGlEntries((data as GLEntry[]) || []);
     } catch (error) {
       console.error('Error loading GL entries:', error);
     } finally {
       setGlLoading(false);
     }
-  }, [glStartDate, glEndDate, glAccountFilter, glReferenceFilter]);
+  };
 
-  const loadARData = useCallback(async () => {
+  const exportGLReport = (format: ExportFormat) => {
+    const exportData = {
+      title: 'General Ledger Report',
+      dateRange: {
+        start: new Date(glStartDate),
+        end: new Date(glEndDate),
+      },
+      columns: [
+        { header: 'Date', key: 'date', width: 12 },
+        { header: 'Account', key: 'account', width: 30 },
+        { header: 'Description', key: 'description', width: 40 },
+        { header: 'Reference', key: 'reference', width: 15 },
+        { header: 'Debit', key: 'debit', width: 15 },
+        { header: 'Credit', key: 'credit', width: 15 },
+      ],
+      rows: glEntries.map((entry) => ({
+        date: new Date(entry.entry_date).toLocaleDateString(),
+        account: `${entry.chart_of_accounts?.account_code || ''} - ${entry.chart_of_accounts?.account_name || ''}`,
+        description: entry.description || '',
+        reference: entry.reference_type || '',
+        debit: entry.debit_amount > 0 ? `$${entry.debit_amount.toFixed(2)}` : '',
+        credit: entry.credit_amount > 0 ? `$${entry.credit_amount.toFixed(2)}` : '',
+      })),
+      summary: {
+        totalDebits: glEntries.reduce((sum, e) => sum + (e.debit_amount || 0), 0),
+        totalCredits: glEntries.reduce((sum, e) => sum + (e.credit_amount || 0), 0),
+      },
+    };
+
+    ExportService.export(exportData, format);
+  };
+
+  const exportARAPReport = (format: ExportFormat) => {
+    const exportData = {
+      title: 'Accounts Receivable Aging Report',
+      dateRange: {
+        start: new Date(),
+        end: new Date(),
+      },
+      columns: [
+        { header: 'Customer', key: 'customer', width: 30 },
+        { header: 'Invoice #', key: 'invoice', width: 15 },
+        { header: 'Issue Date', key: 'issueDate', width: 12 },
+        { header: 'Due Date', key: 'dueDate', width: 12 },
+        { header: 'Aging', key: 'aging', width: 12 },
+        { header: 'Balance Due', key: 'balanceDue', width: 15 },
+      ],
+      rows: arInvoices.map((invoice) => ({
+        customer: invoice.customer_name,
+        invoice: invoice.invoice_number,
+        issueDate: new Date(invoice.issue_date).toLocaleDateString(),
+        dueDate: new Date(invoice.due_date).toLocaleDateString(),
+        aging: getAgingBucketLabel(invoice.days_overdue),
+        balanceDue: `$${invoice.balance_due.toFixed(2)}`,
+      })),
+      summary: {
+        total: arSummary.total,
+        current: arSummary.current,
+        days_1_30: arSummary.days_1_30,
+        days_31_60: arSummary.days_31_60,
+        days_61_90: arSummary.days_61_90,
+        days_90_plus: arSummary.days_90_plus,
+      },
+    };
+
+    ExportService.export(exportData, format);
+  };
+
+  const loadARData = async () => {
     setArLoading(true);
     try {
       const { data, error } = await supabase
@@ -241,21 +350,29 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
       if (error) throw error;
 
       const today = new Date();
-      const invoices: ARInvoice[] = (data || []).map((inv: unknown) => {
-        const i = inv as { id: string; invoice_number: string; customer_id: string; issue_date: string; due_date: string; balance_due: number; customers: { name: string } | null };
-        const dueDate = new Date(i.due_date);
+      type InvoiceWithCustomer = {
+        id: string;
+        invoice_number: string;
+        customer_id: string;
+        issue_date: string;
+        due_date: string;
+        balance_due: number;
+        customers: { name: string } | null;
+      };
+      const invoices: ARInvoice[] = ((data || []) as unknown as InvoiceWithCustomer[]).map((inv) => {
+        const dueDate = new Date(inv.due_date);
         const diffTime = today.getTime() - dueDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const daysOverdue = diffDays > 0 ? diffDays : 0;
 
         return {
-          id: i.id,
-          invoice_number: i.invoice_number,
-          customer_id: i.customer_id,
-          customer_name: i.customers?.name || 'Unknown',
-          issue_date: i.issue_date,
-          due_date: i.due_date,
-          balance_due: i.balance_due,
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          customer_id: inv.customer_id,
+          customer_name: inv.customers?.name || 'Unknown',
+          issue_date: inv.issue_date,
+          due_date: inv.due_date,
+          balance_due: inv.balance_due,
           days_overdue: daysOverdue,
         };
       });
@@ -293,16 +410,33 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     } finally {
       setArLoading(false);
     }
-  }, []);
+  };
 
-  const loadAPData = useCallback(async () => {
+  const loadAPData = async () => {
     try {
       const summary = await APService.getAPSummary();
       setApSummary(summary);
     } catch (error) {
       console.error('Error loading AP data:', error);
     }
-  }, []);
+  };
+
+  const handleRecordPayment = (vendorId?: string, billId?: string) => {
+    if (billId) {
+      // If opening from a specific bill, get vendor from bill
+      APService.getBillById(billId).then((bill) => {
+        if (bill) {
+          setSelectedVendorIdForPayment(bill.vendor_id);
+          setSelectedBillIdForPayment(billId);
+          setShowRecordPaymentModal(true);
+        }
+      });
+    } else {
+      setSelectedVendorIdForPayment(vendorId);
+      setSelectedBillIdForPayment(undefined);
+      setShowRecordPaymentModal(true);
+    }
+  };
 
   const handleAPDataRefresh = () => {
     loadAPData();
@@ -312,7 +446,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
     setSelectedBill(null);
   };
 
-  const loadReconciliationsData = useCallback(async () => {
+  const loadReconciliationsData = async () => {
     setReconLoading(true);
     try {
       // Load cash accounts
@@ -324,7 +458,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
         .order('account_number', { ascending: true });
 
       if (accountsError) throw accountsError;
-      setCashAccounts((accounts as unknown as GLAccount[]) || []);
+      setCashAccounts((accounts as GLAccount[]) || []);
 
       // Load recent reconciliations using the service
       const recons = await ReconciliationService.getReconciliations();
@@ -341,50 +475,13 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
           };
         })
       );
-      setReconciliations((reconsWithAccountNames as unknown as BankReconciliation[]).slice(0, 10));
+      setReconciliations(reconsWithAccountNames.slice(0, 10) as BankReconciliation[]);
     } catch (error) {
       console.error('Error loading reconciliation data:', error);
     } finally {
       setReconLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    loadGLAccounts();
-    loadJournalEntries();
-  }, [loadGLAccounts, loadJournalEntries]);
-
-  // Handle initialView routing
-  useEffect(() => {
-    if (!initialView) return;
-
-    switch (initialView) {
-      case 'dashboard':
-        setActiveTab('dashboard');
-        setSelectedReport(null);
-        break;
-      case 'general-ledger':
-        setActiveTab('reports');
-        setSelectedReport('general-ledger');
-        loadGLEntries();
-        break;
-      case 'ar-ap':
-        setActiveTab('reports');
-        setSelectedReport('ar-ap');
-        loadARData();
-        loadAPData();
-        break;
-      case 'chart-of-accounts':
-        setActiveTab('accounts');
-        setSelectedReport(null);
-        break;
-      case 'reconciliations':
-        setActiveTab('reconciliations');
-        setSelectedReport(null);
-        loadReconciliationsData();
-        break;
-    }
-  }, [initialView, loadGLEntries, loadARData, loadAPData, loadReconciliationsData]);
+  };
 
   const handleStartReconciliation = (account: GLAccount) => {
     setSelectedAccountForRecon(account);
@@ -449,7 +546,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
   const updateJournalLine = (index: number, field: string, value: string | number) => {
     const updated = [...journalLines];
-    (updated[index] as unknown as Record<string, unknown>)[field] = value;
+    updated[index] = { ...updated[index], [field]: value };
     setJournalLines(updated);
   };
 
@@ -642,10 +739,10 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
 
       <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-thin">
         <nav className="flex space-x-8 min-w-max px-1">
-          {['dashboard', 'accounts', 'journal', 'reports', 'reconciliations', 'settings'].map((tab) => (
+          {(['dashboard', 'accounts', 'journal', 'reports', 'reconciliations', 'settings'] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as 'dashboard' | 'accounts' | 'journal' | 'reports' | 'settings' | 'reconciliations')}
+              onClick={() => setActiveTab(tab)}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-blue-600 text-blue-600'
@@ -2190,10 +2287,9 @@ function StartReconciliationModal({
       });
 
       onCreate(reconciliation.id);
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('Error starting reconciliation:', error);
-      const errorMessage = (error as Error)?.message || 'Unknown error';
-      alert('Failed to start reconciliation: ' + errorMessage);
+      alert('Failed to start reconciliation: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setLoading(false);
     }
