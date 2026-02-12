@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ManufacturingService, ProductionDashboardItem, ProductionStats } from '../../../services/ManufacturingService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { ProductionOrderForm } from '../ProductionOrderForm';
 
 interface WorkOrdersViewProps {
   onSelectOrder?: (orderId: string) => void;
@@ -24,6 +25,7 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
   const [orders, setOrders] = useState<ProductionDashboardItem[]>([]);
   const [stats, setStats] = useState<ProductionStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [filters, setFilters] = useState({
     status: 'all',
     priority: '',
@@ -112,7 +114,7 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
         </div>
         {canCreate && (
           <button
-            onClick={onCreateOrder}
+            onClick={() => onCreateOrder ? onCreateOrder() : setShowCreateModal(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -223,7 +225,7 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
             <p>No work orders found</p>
             {canCreate && (
               <button
-                onClick={onCreateOrder}
+                onClick={() => onCreateOrder ? onCreateOrder() : setShowCreateModal(true)}
                 className="mt-4 text-blue-600 hover:text-blue-700 dark:text-blue-400"
               >
                 Create your first work order
@@ -290,6 +292,17 @@ export function WorkOrdersView({ onSelectOrder, onCreateOrder }: WorkOrdersViewP
           </div>
         )}
       </div>
+
+      {/* Create Order Modal */}
+      {showCreateModal && (
+        <ProductionOrderForm
+          onClose={() => setShowCreateModal(false)}
+          onSave={() => {
+            setShowCreateModal(false);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }
