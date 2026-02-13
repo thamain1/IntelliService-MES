@@ -670,6 +670,12 @@ export const navigationConfig: NavigationGroup[] = [
             icon: Shield,
             roles: ['admin'],
           },
+          {
+            id: 'settings-vehicles',
+            label: 'Vehicles',
+            icon: Truck,
+            roles: ['admin'],
+          },
         ],
       },
     ],
