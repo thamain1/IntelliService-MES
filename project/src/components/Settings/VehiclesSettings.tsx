@@ -30,6 +30,7 @@ export function VehiclesSettings() {
 
   const loadVehicles = async () => {
     try {
+      // First, get all trucks with technician assignments
       const { data, error } = await supabase
         .from('stock_locations')
         .select(`
@@ -40,11 +41,17 @@ export function VehiclesSettings() {
           )
         `)
         .eq('location_type', 'truck')
-        .not('technician_id', 'is', null)
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setVehicles((data as VehicleWithTechnician[]) || []);
+
+      // Filter to only show vehicles that have a valid technician assignment
+      // (technician_id is set AND the profiles join returned data)
+      const assignedVehicles = (data || []).filter(
+        (vehicle) => vehicle.technician_id && vehicle.profiles?.full_name
+      ) as VehicleWithTechnician[];
+
+      setVehicles(assignedVehicles);
     } catch (error) {
       console.error('Error loading vehicles:', error);
     } finally {

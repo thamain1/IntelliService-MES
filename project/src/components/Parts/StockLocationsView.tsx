@@ -39,7 +39,7 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
   const [saving, setSaving] = useState(false);
   const [newLocationData, setNewLocationData] = useState({
     name: '',
-    location_type: 'main_warehouse' as 'main_warehouse' | 'vehicle',
+    location_type: 'warehouse' as 'warehouse' | 'truck',
     technician_id: '',
     vehicle_id: '',
     address: '',
@@ -121,16 +121,16 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
           name: newLocationData.name,
           location_type: newLocationData.location_type,
           location_code: locationCode,
-          technician_id: newLocationData.location_type === 'vehicle' && newLocationData.technician_id ? newLocationData.technician_id : null,
-          vehicle_id: newLocationData.location_type === 'vehicle' ? newLocationData.vehicle_id || null : null,
+          technician_id: newLocationData.location_type === 'truck' && newLocationData.technician_id ? newLocationData.technician_id : null,
+          vehicle_id: newLocationData.location_type === 'truck' ? newLocationData.vehicle_id || null : null,
           address: newLocationData.address || null,
           is_active: true,
-          is_mobile: newLocationData.location_type === 'vehicle',
+          is_mobile: newLocationData.location_type === 'truck',
         });
 
       if (error) throw error;
 
-      if (newLocationData.location_type === 'vehicle' && newLocationData.technician_id) {
+      if (newLocationData.location_type === 'truck' && newLocationData.technician_id) {
         const { data: newLocation } = await supabase
           .from('stock_locations')
           .select('id')
@@ -148,7 +148,7 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
       setShowAddModal(false);
       setNewLocationData({
         name: '',
-        location_type: 'main_warehouse',
+        location_type: 'warehouse',
         technician_id: '',
         vehicle_id: '',
         address: '',
@@ -177,15 +177,22 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
     const matchesSearch =
       location.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesType = locationTypeFilter === 'all' || location.location_type === locationTypeFilter;
+    // Map filter IDs to actual location_type values
+    const getActualType = (filterType: string) => {
+      if (filterType === 'vehicle') return 'truck';
+      if (filterType === 'main_warehouse') return 'warehouse';
+      return filterType;
+    };
+
+    const matchesType = locationTypeFilter === 'all' || location.location_type === getActualType(locationTypeFilter);
 
     return matchesSearch && matchesType;
   });
 
   const locationTypeCounts = {
     all: locations.length,
-    main_warehouse: locations.filter((l) => l.location_type === 'main_warehouse').length,
-    vehicle: locations.filter((l) => l.location_type === 'vehicle').length,
+    main_warehouse: locations.filter((l) => l.location_type === 'warehouse').length,
+    vehicle: locations.filter((l) => l.location_type === 'truck').length,
     warehouse: locations.filter((l) => l.location_type === 'warehouse').length,
   };
 
@@ -344,7 +351,7 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
                             )}
                           </div>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                            {location.location_type === 'vehicle' ? 'Mobile' : formatLocationType(location.location_type)}
+                            {location.location_type === 'truck' ? 'Mobile' : formatLocationType(location.location_type)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {formatLocationType(location.location_type)}
@@ -511,11 +518,11 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
                 <select
                   required
                   value={newLocationData.location_type}
-                  onChange={(e) => setNewLocationData({ ...newLocationData, location_type: e.target.value as 'main_warehouse' | 'vehicle' })}
+                  onChange={(e) => setNewLocationData({ ...newLocationData, location_type: e.target.value as 'warehouse' | 'truck' })}
                   className="input"
                 >
-                  <option value="main_warehouse">Warehouse</option>
-                  <option value="vehicle">Vehicle</option>
+                  <option value="warehouse">Warehouse</option>
+                  <option value="truck">Truck / Vehicle</option>
                 </select>
               </div>
 
@@ -529,11 +536,11 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
                   value={newLocationData.name}
                   onChange={(e) => setNewLocationData({ ...newLocationData, name: e.target.value })}
                   className="input"
-                  placeholder={newLocationData.location_type === 'vehicle' ? "e.g., Service Van #1" : "e.g., Main Warehouse"}
+                  placeholder={newLocationData.location_type === 'truck' ? "e.g., Service Van #1" : "e.g., Main Warehouse"}
                 />
               </div>
 
-              {newLocationData.location_type === 'vehicle' && (
+              {newLocationData.location_type === 'truck' && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -568,7 +575,7 @@ export function StockLocationsView({ itemType = 'part' }: StockLocationsViewProp
                 </>
               )}
 
-              {newLocationData.location_type === 'main_warehouse' && (
+              {newLocationData.location_type === 'warehouse' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Address
