@@ -30,28 +30,33 @@ export function VehiclesSettings() {
 
   const loadVehicles = async () => {
     try {
-      // First, get all trucks with technician assignments
-      const { data, error } = await supabase
+      // Get all mobile/truck locations (check both location_type and is_mobile flag)
+      const { data: locations, error: locError } = await supabase
         .from('stock_locations')
-        .select(`
-          *,
-          profiles:technician_id (
-            id,
-            full_name
-          )
-        `)
-        .eq('location_type', 'truck')
+        .select('*')
+        .or('location_type.eq.truck,is_mobile.eq.true')
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      if (locError) throw locError;
 
-      // Filter to only show vehicles that have a valid technician assignment
-      // (technician_id is set AND the profiles join returned data)
-      const assignedVehicles = (data || []).filter(
-        (vehicle) => vehicle.technician_id && vehicle.profiles?.full_name
-      ) as VehicleWithTechnician[];
+      // Get all technician profiles
+      const { data: profiles, error: profError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'technician');
 
-      setVehicles(assignedVehicles);
+      if (profError) throw profError;
+
+      // Create a map of technician profiles for quick lookup
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Map all vehicles with their profile data (if assigned)
+      const allVehicles = (locations || []).map(loc => ({
+        ...loc,
+        profiles: loc.technician_id ? profileMap.get(loc.technician_id) || null : null
+      })) as VehicleWithTechnician[];
+
+      setVehicles(allVehicles);
     } catch (error) {
       console.error('Error loading vehicles:', error);
     } finally {
@@ -80,7 +85,12 @@ export function VehiclesSettings() {
       const firstName = vehicle.profiles.full_name.split(' ')[0];
       return `${firstName}'s Truck`;
     }
+    // For unassigned vehicles, just show the location name
     return vehicle.name;
+  };
+
+  const isAssigned = (vehicle: VehicleWithTechnician): boolean => {
+    return !!(vehicle.technician_id && vehicle.profiles?.full_name);
   };
 
   const handleEditVehicle = (vehicle: VehicleWithTechnician) => {
@@ -169,7 +179,7 @@ export function VehiclesSettings() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Vehicles</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {vehicles.length} assigned vehicle{vehicles.length !== 1 ? 's' : ''}
+            {vehicles.filter(v => isAssigned(v)).length} assigned of {vehicles.length} total vehicle{vehicles.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
@@ -198,9 +208,9 @@ export function VehiclesSettings() {
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center">
                     <Truck className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">No assigned vehicles found</p>
+                    <p className="text-gray-500 dark:text-gray-400">No vehicles found</p>
                     <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                      Vehicles are assigned through stock location setup
+                      Add vehicles through Stock Locations in Parts Management
                     </p>
                   </td>
                 </tr>
@@ -208,19 +218,33 @@ export function VehiclesSettings() {
                 vehicles.map((vehicle) => (
                   <tr
                     key={vehicle.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                      !isAssigned(vehicle) ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                          <Truck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          isAssigned(vehicle)
+                            ? 'bg-blue-100 dark:bg-blue-900/30'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30'
+                        }`}>
+                          <Truck className={`w-5 h-5 ${
+                            isAssigned(vehicle)
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-yellow-600 dark:text-yellow-400'
+                          }`} />
                         </div>
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">
                             {getDisplayName(vehicle)}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {vehicle.profiles?.full_name || 'Unassigned'}
+                          <div className={`text-sm ${
+                            isAssigned(vehicle)
+                              ? 'text-gray-500 dark:text-gray-400'
+                              : 'text-yellow-600 dark:text-yellow-400 font-medium'
+                          }`}>
+                            {vehicle.profiles?.full_name || 'Unassigned - Click Edit to assign'}
                           </div>
                         </div>
                       </div>
