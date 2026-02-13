@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, CheckCircle, XCircle, Edit2, Truck } from 'lucide-react';
+import { X, CheckCircle, XCircle, Edit2, Truck, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 
@@ -165,6 +165,37 @@ export function VehiclesSettings() {
     }
   };
 
+  const handleDeleteVehicle = async (vehicle: VehicleWithTechnician) => {
+    const confirmMessage = vehicle.profiles?.full_name
+      ? `Are you sure you want to delete "${vehicle.name}" (assigned to ${vehicle.profiles.full_name})? This will also remove any inventory tracking for this location.`
+      : `Are you sure you want to delete "${vehicle.name}"? This will also remove any inventory tracking for this location.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      // Clear technician's default_vehicle_id if this was their vehicle
+      if (vehicle.technician_id) {
+        await supabase
+          .from('profiles')
+          .update({ default_vehicle_id: null })
+          .eq('id', vehicle.technician_id)
+          .eq('default_vehicle_id', vehicle.id);
+      }
+
+      // Delete the stock location
+      const { error } = await supabase
+        .from('stock_locations')
+        .delete()
+        .eq('id', vehicle.id);
+
+      if (error) throw error;
+      loadVehicles();
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      alert('Failed to delete vehicle. It may have inventory or other records associated with it.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,6 +315,13 @@ export function VehiclesSettings() {
                           } text-sm py-1 px-3`}
                         >
                           {vehicle.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVehicle(vehicle)}
+                          className="btn btn-outline text-sm py-1 px-3 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          title="Delete Vehicle"
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
                     </td>
