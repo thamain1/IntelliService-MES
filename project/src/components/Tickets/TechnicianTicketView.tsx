@@ -261,16 +261,54 @@ export function TechnicianTicketView() {
 
   const loadMyTickets = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      // Get tickets directly assigned via tickets.assigned_to
+      const { data: directTickets, error: directError } = await supabase
         .from('tickets')
         .select('*, customers!tickets_customer_id_fkey(name, phone, email, address), equipment(equipment_type, model_number)')
         .eq('assigned_to', profile?.id)
         .in('status', ['open', 'scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
 
-      if (error) throw error;
-      console.log('Loaded tickets:', data?.length || 0);
-      setTickets((data as unknown as Ticket[]) || []);
+      if (directError) throw directError;
+
+      // Get ticket IDs from ticket_assignments where this tech is assigned
+      const { data: assignments, error: assignError } = await supabase
+        .from('ticket_assignments')
+        .select('ticket_id')
+        .eq('technician_id', profile?.id ?? '');
+
+      if (assignError) throw assignError;
+
+      // Get assigned ticket IDs that aren't already in directTickets
+      const directTicketIds = new Set((directTickets || []).map(t => t.id));
+      const additionalTicketIds = (assignments || [])
+        .map(a => a.ticket_id)
+        .filter(id => !directTicketIds.has(id));
+
+      let allTickets = directTickets || [];
+
+      // Fetch additional tickets from ticket_assignments if any
+      if (additionalTicketIds.length > 0) {
+        const { data: assignedTickets, error: assignedError } = await supabase
+          .from('tickets')
+          .select('*, customers!tickets_customer_id_fkey(name, phone, email, address), equipment(equipment_type, model_number)')
+          .in('id', additionalTicketIds)
+          .in('status', ['open', 'scheduled', 'in_progress'])
+          .order('scheduled_date', { ascending: true });
+
+        if (assignedError) throw assignedError;
+        allTickets = [...allTickets, ...(assignedTickets || [])];
+      }
+
+      // Sort combined results by scheduled_date
+      allTickets.sort((a, b) => {
+        const dateA = a.scheduled_date ? new Date(a.scheduled_date).getTime() : Infinity;
+        const dateB = b.scheduled_date ? new Date(b.scheduled_date).getTime() : Infinity;
+        return dateA - dateB;
+      });
+
+      console.log('Loaded tickets:', allTickets.length, '(direct:', directTickets?.length || 0, ', via assignments:', additionalTicketIds.length, ')');
+      setTickets((allTickets as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Error loading tickets:', error);
       alert('Error loading tickets: ' + (error as Error).message);
