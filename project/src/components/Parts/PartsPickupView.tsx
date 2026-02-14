@@ -46,7 +46,7 @@ export function PartsPickupView() {
   const [loading, setLoading] = useState(true);
   const [expandedList, setExpandedList] = useState<string | null>(null);
   const [pickingUp, setPickingUp] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'mine'>('mine');
+  const [filter, setFilter] = useState<'all' | 'mine'>('all');
 
   useEffect(() => {
     loadPickLists();
@@ -302,7 +302,8 @@ export function PartsPickupView() {
 
                     {/* Actions */}
                     <div className="flex items-center justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                      {(isMyPickup || profile?.role === 'admin' || profile?.role === 'dispatcher') && (
+                      {/* Any tech with a truck can pick up parts for any ticket */}
+                      {(profile?.default_vehicle_id || profile?.role === 'admin' || profile?.role === 'dispatcher') && (
                         <button
                           onClick={() => handlePickup(pickList)}
                           disabled={isPickingUp}
