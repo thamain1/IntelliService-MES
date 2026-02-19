@@ -1,13 +1,47 @@
 import { useState, useEffect } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Shield, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { AHSSettingsService } from '../../services/AHSSettingsService';
 import type { Database } from '../../lib/database.types';
 
-type Customer = Database['public']['Tables']['customers']['Row'];
+type CustomerRow = Database['public']['Tables']['customers']['Row'];
 type Equipment = Database['public']['Tables']['equipment']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
+type ServiceContract = Database['public']['Tables']['service_contracts']['Row'];
+
+// Extended Customer type with site contact fields
+type Customer = CustomerRow & {
+  site_contact_name?: string | null;
+  site_contact_phone?: string | null;
+};
+
+// Ticket insert data structure
+interface TicketInsertData {
+  ticket_type: string;
+  customer_id: string;
+  priority: string;
+  title: string;
+  description: string;
+  service_type: string;
+  status: string;
+  created_by?: string;
+  project_id?: string;
+  equipment_id?: string;
+  assigned_to?: string;
+  scheduled_date?: string;
+  estimated_duration?: number;
+  phase_milestone?: string;
+  technician_notes?: string;
+  site_contact_name?: string;
+  site_contact_phone?: string;
+  problem_code?: string;
+  ahs_dispatch_number?: string;
+  ahs_diagnosis_fee_amount?: number;
+  ahs_labor_rate_per_hour?: number;
+  service_contract_id?: string;
+}
 
 interface StandardCode {
   code: string;
@@ -21,7 +55,7 @@ interface NewTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  defaultType?: 'PRJ' | 'SVC';
+  defaultType?: 'PRJ' | 'SVC' | 'WARRANTY_AHS';
   projectId?: string;
 }
 
@@ -36,6 +70,8 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [filteredEquipment, setFilteredEquipment] = useState<Equipment[]>([]);
   const [showGasLeakWarning, setShowGasLeakWarning] = useState(false);
+  const [customerContracts, setCustomerContracts] = useState<ServiceContract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
 
   const [formData, setFormData] = useState({
     ticket_type: defaultType,
@@ -54,7 +90,12 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
     site_contact_name: '',
     site_contact_phone: '',
     problem_code: '',
+    // AHS fields
+    ahs_dispatch_number: '',
+    // Service Contract
+    service_contract_id: '',
   });
+  const [ahsDefaults, setAhsDefaults] = useState<{ diagnosisFee: number; laborRate: number } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -62,14 +103,58 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
     }
   }, [isOpen]);
 
+  // Load AHS defaults when WARRANTY_AHS type is selected
+  useEffect(() => {
+    if (formData.ticket_type === 'WARRANTY_AHS' && !ahsDefaults) {
+      AHSSettingsService.getAHSDefaults().then((defaults) => {
+        setAhsDefaults({ diagnosisFee: defaults.diagnosisFee, laborRate: defaults.laborRate });
+      });
+    }
+  }, [formData.ticket_type, ahsDefaults]);
+
   useEffect(() => {
     if (selectedCustomer) {
       const customerEquipment = equipment.filter((eq) => eq.customer_id === selectedCustomer);
       setFilteredEquipment(customerEquipment);
+
+      // Fetch active service contracts for this customer
+      loadCustomerContracts(selectedCustomer);
     } else {
       setFilteredEquipment([]);
+      setCustomerContracts([]);
     }
   }, [selectedCustomer, equipment]);
+
+  const loadCustomerContracts = async (customerId: string) => {
+    setLoadingContracts(true);
+    try {
+      const { data, error } = await supabase
+        .from('service_contracts')
+        .select('*')
+        .eq('customer_id', customerId)
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) {
+        console.error('Error loading contracts:', error);
+        return;
+      }
+
+      setCustomerContracts(data || []);
+
+      // Auto-select if only one active contract
+      if (data && data.length === 1) {
+        setFormData(prev => ({ ...prev, service_contract_id: data[0].id }));
+      } else {
+        // Clear selection if customer changed and has multiple/no contracts
+        setFormData(prev => ({ ...prev, service_contract_id: '' }));
+      }
+    } catch (error) {
+      console.error('Error loading contracts:', error);
+    } finally {
+      setLoadingContracts(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -95,11 +180,11 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
           .order('sort_order'),
       ]);
 
-      if (customersRes.data) setCustomers(customersRes.data);
+      if (customersRes.data) setCustomers(customersRes.data as Customer[]);
       if (equipmentRes.data) setEquipment(equipmentRes.data);
       if (techniciansRes.data) setTechnicians(techniciansRes.data);
       if (projectsRes.data) setProjects(projectsRes.data);
-      if (problemCodesRes.data) setProblemCodes(problemCodesRes.data);
+      if (problemCodesRes.data) setProblemCodes(problemCodesRes.data as StandardCode[]);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -110,7 +195,7 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
     setLoading(true);
 
     try {
-      const insertData: Record<string, unknown> = {
+      const insertData: TicketInsertData = {
         ticket_type: formData.ticket_type,
         customer_id: formData.customer_id,
         priority: formData.priority,
@@ -132,6 +217,20 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
       if (formData.site_contact_name) insertData.site_contact_name = formData.site_contact_name;
       if (formData.site_contact_phone) insertData.site_contact_phone = formData.site_contact_phone;
       if (formData.problem_code) insertData.problem_code = formData.problem_code;
+
+      // AHS fields
+      if (formData.ticket_type === 'WARRANTY_AHS') {
+        insertData.ahs_dispatch_number = formData.ahs_dispatch_number;
+        if (ahsDefaults) {
+          insertData.ahs_diagnosis_fee_amount = ahsDefaults.diagnosisFee;
+          insertData.ahs_labor_rate_per_hour = ahsDefaults.laborRate;
+        }
+      }
+
+      // Service Contract
+      if (formData.service_contract_id) {
+        insertData.service_contract_id = formData.service_contract_id;
+      }
 
       const { error } = await supabase.from('tickets').insert(insertData);
 
@@ -159,9 +258,13 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
         site_contact_name: '',
         site_contact_phone: '',
         problem_code: '',
+        ahs_dispatch_number: '',
+        service_contract_id: '',
       });
       setSelectedCustomer('');
       setShowGasLeakWarning(false);
+      setAhsDefaults(null);
+      setCustomerContracts([]);
       onSuccess();
       onClose();
     } catch (error) {
@@ -197,15 +300,16 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
                 <select
                   required
                   value={formData.ticket_type}
-                  onChange={(e) => setFormData({ ...formData, ticket_type: e.target.value as 'PRJ' | 'SVC', project_id: e.target.value === 'SVC' ? '' : formData.project_id })}
+                  onChange={(e) => setFormData({ ...formData, ticket_type: e.target.value as 'PRJ' | 'SVC' | 'WARRANTY_AHS', project_id: e.target.value === 'SVC' || e.target.value === 'WARRANTY_AHS' ? '' : formData.project_id })}
                   className="input"
                   disabled={!!projectId}
                 >
                   <option value="SVC">SVC - Service Work Order</option>
                   <option value="PRJ">PRJ - Project Work Order</option>
+                  <option value="WARRANTY_AHS">Warranty - AHS</option>
                 </select>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {formData.ticket_type === 'SVC' ? 'One-off service calls' : 'Linked to a project'}
+                  {formData.ticket_type === 'SVC' ? 'One-off service calls' : formData.ticket_type === 'PRJ' ? 'Linked to a project' : 'AHS warranty dispatch'}
                 </p>
               </div>
 
@@ -233,8 +337,42 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
                   </p>
                 </div>
               )}
+
+              {formData.ticket_type === 'WARRANTY_AHS' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <Shield className="w-4 h-4 inline mr-1" />
+                    AHS Dispatch # *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.ahs_dispatch_number}
+                    onChange={(e) => setFormData({ ...formData, ahs_dispatch_number: e.target.value })}
+                    placeholder="Enter AHS dispatch number"
+                    className="input"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Dispatch number from AHS warranty portal
+                  </p>
+                </div>
+              )}
             </div>
           </div>
+
+          {formData.ticket_type === 'WARRANTY_AHS' && ahsDefaults && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="flex items-center mb-2">
+                <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">AHS Warranty Defaults</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="text-gray-600 dark:text-gray-400">Diagnosis Fee: <span className="font-medium text-gray-900 dark:text-white">${ahsDefaults.diagnosisFee.toFixed(2)}</span></div>
+                <div className="text-gray-600 dark:text-gray-400">Labor Rate: <span className="font-medium text-gray-900 dark:text-white">${ahsDefaults.laborRate.toFixed(2)}/hr</span></div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">These rates can be adjusted after ticket creation in the AHS panel</p>
+            </div>
+          )}
 
           {formData.ticket_type === 'PRJ' && (
             <div>
@@ -265,8 +403,8 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
                   ...formData,
                   customer_id: customerId,
                   equipment_id: '',
-                  site_contact_name: (customer as unknown as { site_contact_name?: string })?.site_contact_name || '',
-                  site_contact_phone: (customer as unknown as { site_contact_phone?: string })?.site_contact_phone || '',
+                  site_contact_name: customer?.site_contact_name || '',
+                  site_contact_phone: customer?.site_contact_phone || '',
                 });
                 setSelectedCustomer(customerId);
               }}
@@ -304,6 +442,44 @@ export function NewTicketModal({ isOpen, onClose, onSuccess, defaultType = 'SVC'
               </p>
             )}
           </div>
+
+          {/* Service Contract Field */}
+          {selectedCustomer && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <FileText className="w-4 h-4 inline mr-1" />
+                Service Contract
+              </label>
+              {loadingContracts ? (
+                <div className="input bg-gray-50 dark:bg-gray-700 text-gray-500">Loading contracts...</div>
+              ) : customerContracts.length > 0 ? (
+                <>
+                  <select
+                    value={formData.service_contract_id}
+                    onChange={(e) => setFormData({ ...formData, service_contract_id: e.target.value })}
+                    className="input"
+                  >
+                    <option value="">No contract (billable)</option>
+                    {customerContracts.map((contract) => (
+                      <option key={contract.id} value={contract.id}>
+                        {contract.name} (expires {contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'N/A'})
+                      </option>
+                    ))}
+                  </select>
+                  {formData.service_contract_id && (
+                    <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm">
+                      <span className="text-green-700 dark:text-green-300 font-medium">Contract Applied</span>
+                      <span className="text-green-600 dark:text-green-400 ml-2">- SLA and discounts will be tracked</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="input bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  No active contracts for this customer
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Site Contact Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
