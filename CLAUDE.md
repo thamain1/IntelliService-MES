@@ -1,7 +1,25 @@
 # IntelliService - Project Context for Claude
 
 ## Overview
-IntelliService is a field service management application for HVAC companies. It handles dispatching, ticketing, inventory management, invoicing, and business intelligence reporting.
+IntelliService is an ERP-style field service management platform for any field service industry. It handles dispatching, ticketing, inventory management, invoicing, and business intelligence reporting. The first vertical is HVAC, but the platform is designed to support any field service offering.
+
+## Related Repositories
+
+### IntelliServiceBeta (This Repo) - Field Service Management
+- **Repository**: https://github.com/thamain1/IntelliServiceBeta
+- **Deployment**: Cloudflare Pages → https://intelliservice.pages.dev
+- **Purpose**: Field service operations - dispatching, ticketing, inventory, invoicing, BI reporting
+- **Supabase Project ID**: uuarbdrzfakvlhlrnwgc
+
+### IntelliService-MES - Manufacturing Execution System
+- **Repository**: https://github.com/thamain1/IntelliService-MES
+- **Purpose**: Manufacturing operations - production scheduling, work orders, shop floor, quality control
+- **Note**: Completely separate codebase and deployment from field service
+
+### IntelliService - Pitch Deck & Demo
+- **Repository**: Local at C:\dev\IntelliService
+- **Purpose**: Marketing pitch deck, wireframes, and AI Agent dashboard demo
+- **Not deployed** - used for presentations only
 
 ## Tech Stack
 - **Frontend**: React + TypeScript + Vite
@@ -30,6 +48,17 @@ project/
 │   └── migrations/          # SQL migrations (run manually in Supabase)
 └── dist/                    # Build output (deployed to Cloudflare)
 ```
+
+## Database Environments
+There are 3 separate Supabase databases:
+
+| Environment | URL | Project ID | Purpose |
+|-------------|-----|------------|---------|
+| Demo/Test | https://uuarbdrzfakvlhlrnwgc.supabase.co | uuarbdrzfakvlhlrnwgc | Online demo and testing |
+| Production | https://trtqrdplgjgysyspwvam.supabase.co | trtqrdplgjgysyspwvam | Live production environment |
+| MES | https://vijbnqrewokckwmtbbhi.supabase.co | vijbnqrewokckwmtbbhi | Manufacturing Execution System |
+
+**IMPORTANT**: When applying migrations, they must be applied to ALL THREE databases.
 
 ## Database
 - **109 tables** in Supabase PostgreSQL
@@ -111,6 +140,55 @@ The view was fixed to only show truck parts that have explicit `inventory_reorde
 ### EXTRACT(DAY FROM date_diff) error
 PostgreSQL date subtraction already returns integer days. Don't use EXTRACT on the result.
 
+### Duplicate key violation when receiving parts
+The `fn_process_received_parts_for_tickets` trigger must use `INSERT ON CONFLICT DO UPDATE` for upserting into `part_inventory`. Plain INSERT fails when a record already exists with a different `reserved_for_ticket_id`.
+
+### Check constraint violation on tickets.hold_type
+Valid values are: `'parts'`, `'issue'`, `'parts_ready'`, or `NULL`. The 'parts_ready' value was added in migration `20260223100000`.
+
+### Check constraint violation on ticket_parts_requests.status
+Valid values include: `'pending'`, `'approved'`, `'ordered'`, `'received'`, `'rejected'`. The 'ordered' and 'received' values were added in migration `20260223060000`.
+
+## Recent Changes (Feb 2026)
+1. Added collapsible sidebar with localStorage persistence
+2. Dispatch calendar with day/week views and double-booking protection
+3. Ticket detail modal with conflict checks
+4. **Parts Request to PO Workflow** (Feb 23, 2026):
+   - Fixed check constraint on `ticket_parts_requests.status` to allow 'ordered' and 'received'
+   - Fixed navigation after PO creation to return to Parts Requests tab
+   - Added "View Ticket" button to open ticket modal from parts request
+   - Added "View PO" button to open PO receiving modal
+   - Fixed duplicate key error when receiving parts (see below)
+   - Added 'parts_ready' to `tickets.hold_type` check constraint
+
+## Parts Receiving Workflow
+
+### Key Tables & Triggers
+- `purchase_order_lines` - Has `linked_ticket_id` and `linked_request_id` for ticket-linked parts
+- `part_inventory` - Stores inventory with `reserved_for_ticket_id` for reservations
+- `fn_process_received_parts_for_tickets()` - Trigger on `purchase_order_lines` that:
+  - Stages ticket-linked parts to Job Staging location (`a0000000-0000-0000-0000-000000000001`)
+  - Creates pick lists when all parts are received
+  - Updates ticket holds and creates ticket updates
+- `fn_upsert_part_inventory()` - RPC function for atomic inventory upsert
+
+### How Receiving Works
+1. **Ticket-linked parts**: The database trigger `fn_process_received_parts_for_tickets` handles staging automatically when `quantity_received` is updated on `purchase_order_lines`
+2. **Non-ticket parts**: The frontend calls `fn_upsert_part_inventory` RPC to add to selected location
+3. **Serialized parts**: Frontend inserts into `serialized_parts` table directly
+
+### Important: Receiving Code Logic (ReceivingModal.tsx)
+```typescript
+// Only call RPC for non-ticket-linked parts - trigger handles ticket-linked ones
+if (!part.is_serialized && receivingItem.quantity_received > 0 && !line.linked_ticket_id) {
+  await supabase.rpc('fn_upsert_part_inventory', {...});
+}
+```
+
+### Common Issues Fixed
+- **Duplicate key violation on part_inventory**: The trigger was using plain INSERT instead of INSERT ON CONFLICT. Fixed in migration `20260223090000_fix_receiving_trigger_upsert.sql`
+- **hold_type check constraint violation**: Trigger sets `hold_type='parts_ready'` but constraint only allowed 'parts' and 'issue'. Fixed in migration `20260223100000_add_parts_ready_to_hold_type_constraint.sql`
+
 ## Recent Changes (Jan 2026)
 1. Fixed RLS policy for `time_logs` - admins can now view all staff time logs
 2. Fixed JIT/Kanban inventory view with proper reserved qty, daily usage, reorder point calculations
@@ -141,3 +219,40 @@ PostgreSQL date subtraction already returns integer days. Don't use EXTRACT on t
 - **Requires Registration**: Enable for parts requiring warranty registration with manufacturer
   - When checked, must provide Registration URL
   - Stored in `parts.requires_registration` and `parts.registration_url` columns
+
+## Key Recent Migrations (Feb 23, 2026)
+These migrations are critical for the parts receiving workflow:
+
+| Migration | Purpose |
+|-----------|---------|
+| `20260223050000_auto_update_parts_request_on_po_line.sql` | Auto-update parts request status when PO line is created |
+| `20260223060000_fix_parts_request_status_constraint.sql` | Add 'ordered' and 'received' to status constraint |
+| `20260223070000_fix_inventory_movement_trigger_unit_cost.sql` | Remove invalid unit_cost reference |
+| `20260223080000_create_upsert_part_inventory_function.sql` | Create `fn_upsert_part_inventory` RPC for atomic upserts |
+| `20260223090000_fix_receiving_trigger_upsert.sql` | Fix trigger to use INSERT ON CONFLICT |
+| `20260223100000_add_parts_ready_to_hold_type_constraint.sql` | Add 'parts_ready' to hold_type constraint |
+
+## Applying Migrations
+To apply migrations to all databases:
+```bash
+cd C:/dev/IntelliServiceBeta/project
+
+# Demo/Test (default linked)
+npx supabase db push
+
+# Production
+npx supabase link --project-ref trtqrdplgjgysyspwvam
+npx supabase db push
+
+# MES
+npx supabase link --project-ref vijbnqrewokckwmtbbhi
+npx supabase db push
+
+# Link back to Demo/Test
+npx supabase link --project-ref uuarbdrzfakvlhlrnwgc
+```
+
+If migrations fail due to orphaned remote migrations:
+```bash
+npx supabase migration repair --status reverted <migration_ids>
+```
