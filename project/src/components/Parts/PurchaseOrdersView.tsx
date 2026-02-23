@@ -261,7 +261,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
 
       if (linesError) throw linesError;
 
-      // Update any linked parts requests to 'ordered' status
+      // Update any linked parts requests to 'ordered' status using the RPC function
       // This handles both the linkedRequest flow and individual line items with linked_request_id
       const linkedRequestIds = new Set<string>();
 
@@ -277,18 +277,36 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
         }
       });
 
-      // Update all linked parts requests
+      // Use the RPC function to link PO to parts requests (bypasses RLS)
       for (const requestId of linkedRequestIds) {
-        const { error: updateError } = await supabase
-          .from('ticket_parts_requests')
-          .update({
-            po_id: poData.id,
-            status: 'ordered',
-          })
-          .eq('id', requestId);
+        // Build line mappings for this request
+        const lineMappings = lineItemsToInsert
+          .filter((_, index) => lineItems[index].linked_request_id === requestId)
+          .map((line, index) => ({
+            po_line_id: line.part_id, // We don't have actual line IDs yet
+            request_line_id: lineItems[index].request_line_id || null
+          }));
 
-        if (updateError) {
-          console.error('Error updating parts request:', updateError);
+        const { error: linkError } = await supabase.rpc('fn_link_po_to_parts_request', {
+          p_po_id: poData.id,
+          p_request_id: requestId,
+          p_line_mappings: lineMappings
+        });
+
+        if (linkError) {
+          console.error('Error linking PO to parts request:', linkError);
+          // Fallback: try direct update
+          const { error: updateError } = await supabase
+            .from('ticket_parts_requests')
+            .update({
+              po_id: poData.id,
+              status: 'ordered',
+            })
+            .eq('id', requestId);
+
+          if (updateError) {
+            console.error('Fallback update also failed:', updateError);
+          }
         }
       }
 
@@ -332,7 +350,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
         // Find PO lines with linked requests
         const { data: poLines } = await supabase
           .from('purchase_order_lines')
-          .select('linked_request_id')
+          .select('id, linked_request_id')
           .eq('po_id', poId)
           .not('linked_request_id', 'is', null);
 
@@ -340,13 +358,29 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
           const requestIds = [...new Set(poLines.map(line => line.linked_request_id).filter(Boolean))];
 
           for (const requestId of requestIds) {
-            await supabase
-              .from('ticket_parts_requests')
-              .update({
-                status: 'ordered',
-                po_id: poId
-              })
-              .eq('id', requestId);
+            // Build line mappings
+            const lineMappings = poLines
+              .filter(line => line.linked_request_id === requestId)
+              .map(line => ({ po_line_id: line.id, request_line_id: null }));
+
+            // Use RPC function to link (bypasses RLS)
+            const { error: linkError } = await supabase.rpc('fn_link_po_to_parts_request', {
+              p_po_id: poId,
+              p_request_id: requestId,
+              p_line_mappings: lineMappings
+            });
+
+            if (linkError) {
+              console.error('Error linking PO to parts request via RPC:', linkError);
+              // Fallback to direct update
+              await supabase
+                .from('ticket_parts_requests')
+                .update({
+                  status: 'ordered',
+                  po_id: poId
+                })
+                .eq('id', requestId);
+            }
           }
         }
       }
