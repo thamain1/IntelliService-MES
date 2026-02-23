@@ -162,9 +162,9 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
           return;
         }
 
-        // Update inventory for non-serialized parts
-        if (!part.is_serialized && receivingItem.quantity_received > 0) {
-          // Use RPC function for atomic upsert to avoid race conditions
+        // Update inventory for non-serialized parts NOT linked to a ticket
+        // (Ticket-linked parts are handled by the database trigger which stages them)
+        if (!part.is_serialized && receivingItem.quantity_received > 0 && !line.linked_ticket_id) {
           const { error: inventoryError } = await supabase.rpc('fn_upsert_part_inventory', {
             p_part_id: line.part_id,
             p_location_id: receivingItem.stock_location_id,
