@@ -162,7 +162,23 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
           return;
         }
 
-        // Note: Inventory receipt updates are handled by database triggers on po_receipt insert
+        // Record inventory movement for non-serialized parts (triggers inventory update)
+        if (!part.is_serialized && receivingItem.quantity_received > 0) {
+          const { error: movementError } = await supabase
+            .from('inventory_movements')
+            .insert({
+              part_id: line.part_id,
+              movement_type: 'receipt',
+              quantity: receivingItem.quantity_received,
+              to_location_id: receivingItem.stock_location_id,
+              unit_cost: line.unit_price,
+              reference_type: 'purchase_order',
+              reference_id: purchaseOrderId,
+              notes: `Received from PO ${po?.po_number}`,
+            });
+
+          if (movementError) throw movementError;
+        }
 
         if (part.is_serialized) {
           const serializedParts = receivingItem.serial_numbers.map((serial) => ({
