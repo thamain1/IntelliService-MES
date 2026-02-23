@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   Download,
+  type LucideIcon,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,7 +18,6 @@ import type { Database } from '../../lib/database.types';
 import { NewTicketModal } from './NewTicketModal';
 import { TicketDetailModal } from '../Dispatch/TicketDetailModal';
 import { TechnicianTicketView } from './TechnicianTicketView';
-import type { LucideIcon } from 'lucide-react';
 
 type TicketAssignment = {
   technician_id: string;
@@ -74,14 +74,14 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
 
   const loadTickets = useCallback(async () => {
     try {
-      let query = supabase
+      const baseQuery = supabase
         .from('tickets')
         .select('*, customers!tickets_customer_id_fkey(name), profiles!tickets_assigned_to_fkey(full_name), equipment(model_number, manufacturer), ticket_assignments(technician_id, role, profiles!ticket_assignments_technician_id_fkey(full_name)), hold_active, hold_type, hold_parts_active, hold_issue_active, revisit_required')
         .order('created_at', { ascending: false });
 
-      if (profile?.role === 'technician') {
-        query = query.eq('assigned_to', profile.id);
-      }
+      const query = profile?.role === 'technician'
+        ? baseQuery.eq('assigned_to', profile.id)
+        : baseQuery;
 
       const { data, error } = await query;
 
@@ -103,6 +103,20 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
   useEffect(() => {
     loadTickets();
   }, [loadTickets]);
+
+  useEffect(() => {
+    if (initialFilter && initialFilter !== 'all') {
+      // Check if initialFilter is a UUID (ticket ID) - UUIDs are 36 chars with dashes
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(initialFilter)) {
+        // Open the ticket detail modal for this specific ticket
+        setSelectedTicketId(initialFilter);
+      } else {
+        // It's a status filter
+        setStatusFilter(initialFilter);
+      }
+    }
+  }, [initialFilter]);
 
   if (profile?.role === 'technician') {
     return <TechnicianTicketView />;
@@ -168,13 +182,13 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customers?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    let matchesStatus = true;
+    let matchesStatus: boolean = true;
     if (statusFilter !== 'all') {
       if (statusFilter === 'completed_today') {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         matchesStatus = (ticket.status === 'completed' || ticket.status === 'closed_billed') &&
-          ticket.completed_date &&
+          !!ticket.completed_date &&
           new Date(ticket.completed_date) >= today;
       } else if (statusFilter === 'active_technicians') {
         matchesStatus = ticket.assigned_to !== null && ticket.status === 'in_progress';
@@ -197,7 +211,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const getStatusIcon = (status: string): LucideIcon => {
+  const getStatusIcon = (status: string | null): LucideIcon => {
     const icons: Record<string, LucideIcon> = {
       open: AlertCircle,
       scheduled: Clock,
@@ -206,10 +220,10 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
       cancelled: XCircle,
       closed_billed: CheckCircle,
     };
-    return icons[status] || AlertCircle;
+    return icons[status || ''] || AlertCircle;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     const badges: Record<string, string> = {
       open: 'badge badge-red',
       scheduled: 'badge badge-blue',
@@ -218,17 +232,17 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
       cancelled: 'badge badge-gray',
       closed_billed: 'badge badge-green',
     };
-    return badges[status] || 'badge badge-gray';
+    return badges[status || ''] || 'badge badge-gray';
   };
 
-  const getPriorityBadge = (priority: string) => {
+  const getPriorityBadge = (priority: string | null) => {
     const badges: Record<string, string> = {
       urgent: 'badge badge-red',
       high: 'badge badge-yellow',
       normal: 'badge badge-blue',
       low: 'badge badge-gray',
     };
-    return badges[priority] || 'badge badge-gray';
+    return badges[priority ?? ''] || 'badge badge-gray';
   };
 
   const formatDate = (dateString: string | null) => {
@@ -387,7 +401,7 @@ export function TicketsView({ initialFilter }: TicketsViewProps = {}) {
                       </td>
                       <td className="px-6 py-4">
                         <span className={getStatusBadge(ticket.status)}>
-                          {ticket.status.replace('_', ' ')}
+                          {(ticket.status ?? 'unknown').replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-6 py-4">

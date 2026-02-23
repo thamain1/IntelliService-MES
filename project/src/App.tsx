@@ -135,14 +135,14 @@ function AppContent() {
       case 'parts-transfers':
       case 'parts-receiving':
       case 'parts-receipts':
-        return <PartsManagementView initialView={currentView} itemType="part" />;
+        return <PartsManagementView initialView={currentView} itemType="part" onNavigateToTicket={(ticketId) => handleNavigateWithFilter('tickets', ticketId)} />;
       case 'tools':
       case 'tools-inventory':
       case 'tools-purchase-orders':
       case 'tools-transfers':
       case 'tools-receiving':
       case 'tools-receipts':
-        return <PartsManagementView initialView={currentView} itemType="tool" />;
+        return <PartsManagementView initialView={currentView} itemType="tool" onNavigateToTicket={(ticketId) => handleNavigateWithFilter('tickets', ticketId)} />;
       case 'equipment':
       case 'equipment-installed':
       case 'equipment-parts':

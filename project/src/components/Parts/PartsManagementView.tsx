@@ -15,30 +15,22 @@ type TabType = 'catalog' | 'vendors' | 'orders' | 'serialized' | 'locations' | '
 type ItemType = 'part' | 'tool';
 
 interface LinkedRequest {
-  request_id: string;
-  ticket_id: string;
-  ticket_number: string;
-  customer_name: string;
-  parts_requested: Array<{
-    line_id: string;
-    part_id: string;
-    part_number: string;
-    part_name: string;
-    quantity_requested: number;
-  }>;
+  id: string;
+  part_id: string;
+  quantity: number;
+  urgency: string;
 }
 
 interface PartsManagementViewProps {
   initialView?: string;
   itemType?: ItemType;
+  onNavigateToTicket?: (ticketId: string) => void;
 }
 
-export function PartsManagementView({ initialView, itemType = 'part' }: PartsManagementViewProps) {
+export function PartsManagementView({ initialView, itemType = 'part', onNavigateToTicket }: PartsManagementViewProps) {
   const isTool = itemType === 'tool';
   const itemLabelPlural = isTool ? 'Tools' : 'Parts';
   const ItemIcon = isTool ? Wrench : Package;
-
-  const [linkedRequest, setLinkedRequest] = useState<LinkedRequest | null>(null);
 
   const getInitialTab = useCallback((): TabType => {
     switch (initialView) {
@@ -66,6 +58,7 @@ export function PartsManagementView({ initialView, itemType = 'part' }: PartsMan
   }, [initialView]);
 
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
+  const [linkedRequest, setLinkedRequest] = useState<LinkedRequest | null>(null);
 
   useEffect(() => {
     setActiveTab(getInitialTab());
@@ -75,6 +68,12 @@ export function PartsManagementView({ initialView, itemType = 'part' }: PartsMan
   const handleCreatePOFromRequest = (request: LinkedRequest) => {
     setLinkedRequest(request);
     setActiveTab('orders');
+  };
+
+  // Handle returning to parts requests after PO creation
+  const handleClearLinkedRequest = () => {
+    setLinkedRequest(null);
+    setActiveTab('requests'); // Return to parts requests tab
   };
 
   const tabs: Array<{ id: TabType; label: string; icon: typeof Package }> = [
@@ -125,14 +124,14 @@ export function PartsManagementView({ initialView, itemType = 'part' }: PartsMan
 
       <div className="mt-6">
         {activeTab === 'catalog' && <PartsView itemType={itemType} />}
-        {activeTab === 'requests' && <PartsRequestQueue onCreatePO={handleCreatePOFromRequest} />}
+        {activeTab === 'requests' && <PartsRequestQueue onCreatePO={handleCreatePOFromRequest} onViewTicket={onNavigateToTicket} />}
         {activeTab === 'pickup' && <PartsPickupView />}
         {activeTab === 'vendors' && <VendorsView />}
         {activeTab === 'orders' && (
           <PurchaseOrdersView
             itemType={itemType}
             linkedRequest={linkedRequest}
-            onClearLinkedRequest={() => setLinkedRequest(null)}
+            onClearLinkedRequest={handleClearLinkedRequest}
           />
         )}
         {activeTab === 'serialized' && <SerializedPartsView itemType={itemType} />}

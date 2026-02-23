@@ -55,9 +55,10 @@ interface ProcurementMetrics {
 
 interface PartsRequestQueueProps {
   onCreatePO?: (request: PartsRequest) => void;
+  onViewTicket?: (ticketId: string) => void;
 }
 
-export function PartsRequestQueue({ onCreatePO }: PartsRequestQueueProps) {
+export function PartsRequestQueue({ onCreatePO, onViewTicket }: PartsRequestQueueProps) {
   const [requests, setRequests] = useState<PartsRequest[]>([]);
   const [metrics, setMetrics] = useState<ProcurementMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,13 +87,13 @@ export function PartsRequestQueue({ onCreatePO }: PartsRequestQueueProps) {
       if (requestsResult.error) {
         console.error('Error loading requests:', requestsResult.error);
       } else {
-        setRequests(requestsResult.data || []);
+        setRequests((requestsResult.data as unknown as PartsRequest[]) || []);
       }
 
       if (metricsResult.error && metricsResult.error.code !== 'PGRST116') {
         console.error('Error loading metrics:', metricsResult.error);
       } else {
-        setMetrics(metricsResult.data);
+        setMetrics((metricsResult.data as unknown as ProcurementMetrics));
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -388,16 +389,15 @@ export function PartsRequestQueue({ onCreatePO }: PartsRequestQueueProps) {
 
                     {/* Actions */}
                     <div className="flex items-center justify-end space-x-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                      <button
-                        onClick={() => {
-                          // Open ticket in new tab/modal
-                          window.open(`/tickets/${request.ticket_id}`, '_blank');
-                        }}
-                        className="btn btn-outline py-2 px-4 text-sm flex items-center space-x-2"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View Ticket</span>
-                      </button>
+                      {onViewTicket && (
+                        <button
+                          onClick={() => onViewTicket(request.ticket_id)}
+                          className="btn btn-outline py-2 px-4 text-sm flex items-center space-x-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>View Ticket</span>
+                        </button>
+                      )}
                       {request.request_status === 'open' && (
                         <button
                           onClick={() => handleCreatePO(request)}
