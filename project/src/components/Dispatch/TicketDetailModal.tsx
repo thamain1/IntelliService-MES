@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Clock, User, Calendar, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle, FileText, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CodeSelector } from '../CRM/CodeSelector';
-import { AHSPanel } from '../Tickets/AHSPanel';
-import { AHSTicketService } from '../../services/AHSTicketService';
 import { checkForConflicts, type ConflictingTicket } from '../../services/ScheduleConflictService';
 import type { Database } from '../../lib/database.types';
 
@@ -979,11 +977,6 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
               </div>
             )}
 
-            {/* AHS Warranty Panel */}
-            {AHSTicketService.isAHSTicket(ticket.ticket_type) && (
-              <AHSPanel ticketId={ticketId} onUpdate={() => { loadTicket(); onUpdate(); }} />
-            )}
-
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Update Ticket
@@ -1004,9 +997,6 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
-                    {AHSTicketService.isAHSTicket(ticket?.ticket_type) && (
-                      <option value="awaiting_ahs_authorization">Awaiting AHS Authorization</option>
-                    )}
                   </select>
                 </div>
 

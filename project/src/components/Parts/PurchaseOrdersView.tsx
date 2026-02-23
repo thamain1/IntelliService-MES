@@ -89,7 +89,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
     order_date: new Date().toISOString().split('T')[0],
     expected_delivery_date: '',
     notes: '',
-    po_source: 'LOCAL_VENDOR' as 'LOCAL_VENDOR' | 'AHS_PORTAL',
+    po_source: 'LOCAL_VENDOR',
   });
 
   const [lineItems, setLineItems] = useState<POLineItem[]>([]);
@@ -707,11 +707,10 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
                   </label>
                   <select
                     value={formData.po_source}
-                    onChange={(e) => setFormData({ ...formData, po_source: e.target.value as 'LOCAL_VENDOR' | 'AHS_PORTAL' })}
+                    onChange={(e) => setFormData({ ...formData, po_source: e.target.value })}
                     className="input"
                   >
                     <option value="LOCAL_VENDOR">Local Vendor</option>
-                    <option value="AHS_PORTAL">AHS Portal</option>
                   </select>
                 </div>
               </div>
