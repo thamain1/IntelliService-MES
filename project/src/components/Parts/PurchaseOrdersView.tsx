@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Search, ShoppingCart, X, Package, Calendar, DollarSign, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ReceivingModal } from './ReceivingModal';
@@ -89,11 +89,45 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
     order_date: new Date().toISOString().split('T')[0],
     expected_delivery_date: '',
     notes: '',
+    po_source: 'LOCAL_VENDOR' as 'LOCAL_VENDOR' | 'AHS_PORTAL',
   });
 
   const [lineItems, setLineItems] = useState<POLineItem[]>([]);
 
-  const loadData = useCallback(async () => {
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemType]);
+
+  // Auto-open modal and pre-populate when linkedRequest is provided
+  useEffect(() => {
+    if (linkedRequest && parts.length > 0) {
+      // Pre-populate line items from the linked request
+      const prePopulatedItems: POLineItem[] = linkedRequest.parts_requested.map((reqPart) => {
+        const part = parts.find((p) => p.id === reqPart.part_id);
+        return {
+          id: crypto.randomUUID(),
+          part_id: reqPart.part_id,
+          description: reqPart.part_name,
+          quantity_ordered: reqPart.quantity_requested,
+          unit_price: part?.unit_price || 0,
+          line_total: reqPart.quantity_requested * (part?.unit_price || 0),
+          linked_ticket_id: linkedRequest.ticket_id,
+          linked_request_id: linkedRequest.request_id,
+          request_line_id: reqPart.line_id,
+        };
+      });
+      setLineItems(prePopulatedItems);
+      setFormData({
+        ...formData,
+        notes: `Parts request for Ticket ${linkedRequest.ticket_number} - ${linkedRequest.customer_name}`,
+      });
+      setShowAddModal(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedRequest, parts]);
+
+  const loadData = async () => {
     try {
       const [posResult, vendorsResult, partsResult] = await Promise.all([
         supabase
@@ -116,19 +150,15 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
       if (vendorsResult.error) throw vendorsResult.error;
       if (partsResult.error) throw partsResult.error;
 
-      setPurchaseOrders((posResult.data as unknown as PurchaseOrder[]) || []);
-      setVendors((vendorsResult.data as unknown as Vendor[]) || []);
-      setParts((partsResult.data as unknown as Part[]) || []);
+      setPurchaseOrders((posResult.data as PurchaseOrder[]) || []);
+      setVendors((vendorsResult.data as Vendor[]) || []);
+      setParts((partsResult.data as Part[]) || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
-  }, [itemType]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  };
 
   const addLineItem = () => {
     setLineItems([
@@ -204,6 +234,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
             shipping_amount: totals.shipping,
             total_amount: totals.total,
             notes: formData.notes || null,
+            po_source: formData.po_source,
           },
         ])
         .select()
@@ -223,31 +254,47 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
         linked_request_id: item.linked_request_id || null,
       }));
 
-      const { error: linesError } = await supabase
+      const { data: _insertedLines, error: linesError } = await supabase
         .from('purchase_order_lines')
         .insert(lineItemsToInsert)
         .select();
 
       if (linesError) throw linesError;
 
-      // If this PO is linked to a parts request, update the request status
+      // Update any linked parts requests to 'ordered' status
+      // This handles both the linkedRequest flow and individual line items with linked_request_id
+      const linkedRequestIds = new Set<string>();
+
+      // Add from linkedRequest prop if present
       if (linkedRequest) {
+        linkedRequestIds.add(linkedRequest.request_id);
+      }
+
+      // Add from individual line items
+      lineItems.forEach(item => {
+        if (item.linked_request_id) {
+          linkedRequestIds.add(item.linked_request_id);
+        }
+      });
+
+      // Update all linked parts requests
+      for (const requestId of linkedRequestIds) {
         const { error: updateError } = await supabase
           .from('ticket_parts_requests')
           .update({
             po_id: poData.id,
             status: 'ordered',
           })
-          .eq('id', linkedRequest.request_id);
+          .eq('id', requestId);
 
         if (updateError) {
           console.error('Error updating parts request:', updateError);
         }
+      }
 
-        // Clear the linked request
-        if (onClearLinkedRequest) {
-          onClearLinkedRequest();
-        }
+      // Clear the linked request if using that flow
+      if (linkedRequest && onClearLinkedRequest) {
+        onClearLinkedRequest();
       }
 
       setShowAddModal(false);
@@ -256,6 +303,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
         order_date: new Date().toISOString().split('T')[0],
         expected_delivery_date: '',
         notes: '',
+        po_source: 'LOCAL_VENDOR',
       });
       setLineItems([]);
       loadData();
@@ -278,6 +326,30 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
         .eq('id', poId);
 
       if (error) throw error;
+
+      // When PO is submitted or approved, update any linked parts requests to 'ordered'
+      if (newStatus === 'submitted' || newStatus === 'approved') {
+        // Find PO lines with linked requests
+        const { data: poLines } = await supabase
+          .from('purchase_order_lines')
+          .select('linked_request_id')
+          .eq('po_id', poId)
+          .not('linked_request_id', 'is', null);
+
+        if (poLines && poLines.length > 0) {
+          const requestIds = [...new Set(poLines.map(line => line.linked_request_id).filter(Boolean))];
+
+          for (const requestId of requestIds) {
+            await supabase
+              .from('ticket_parts_requests')
+              .update({
+                status: 'ordered',
+                po_id: poId
+              })
+              .eq('id', requestId);
+          }
+        }
+      }
 
       loadData();
     } catch (error) {
@@ -548,7 +620,7 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
             </div>
 
             <form onSubmit={handleCreatePO} className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Vendor *
@@ -593,6 +665,20 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
                     }
                     className="input"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    PO Source
+                  </label>
+                  <select
+                    value={formData.po_source}
+                    onChange={(e) => setFormData({ ...formData, po_source: e.target.value as 'LOCAL_VENDOR' | 'AHS_PORTAL' })}
+                    className="input"
+                  >
+                    <option value="LOCAL_VENDOR">Local Vendor</option>
+                    <option value="AHS_PORTAL">AHS Portal</option>
+                  </select>
                 </div>
               </div>
 
