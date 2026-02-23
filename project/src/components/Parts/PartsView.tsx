@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Search, Package, AlertTriangle, TrendingDown, X, Warehouse, MapPin, Wrench, Edit2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
@@ -25,6 +25,8 @@ type Part = Database['public']['Tables']['parts']['Row'] & {
   is_returnable?: boolean;
   tool_category?: string;
   asset_tag?: string;
+  requires_registration?: boolean;
+  registration_url?: string | null;
 };
 
 type PartWithInventory = Part & {
@@ -60,6 +62,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
     name: string;
   } | null>(null);
   const [editingPart, setEditingPart] = useState<PartWithInventory | null>(null);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorMapping, setVendorMapping] = useState<VendorMapping>({
     vendor_id: '',
@@ -95,7 +98,14 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
 
   const [formData, setFormData] = useState(getInitialFormData());
 
-  const loadReorderAlertCount = useCallback(async () => {
+  useEffect(() => {
+    loadParts();
+    loadVendors();
+    loadReorderAlertCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemType]);
+
+  const loadReorderAlertCount = async () => {
     try {
       const { data, error } = await supabase
         .from('vw_reorder_alerts')
@@ -110,9 +120,9 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
     } catch (error) {
       console.error('Error loading reorder alert count:', error);
     }
-  }, []);
+  };
 
-  const loadVendors = useCallback(async () => {
+  const loadVendors = async () => {
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -121,13 +131,13 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         .order('name');
 
       if (error) throw error;
-      setVendors((data as unknown as Vendor[]) || []);
+      setVendors(data || []);
     } catch (error) {
       console.error('Error loading vendors:', error);
     }
-  }, []);
+  };
 
-  const loadParts = useCallback(async () => {
+  const loadParts = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -143,13 +153,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [itemType, itemLabelPlural]);
-
-  useEffect(() => {
-    loadParts();
-    loadVendors();
-    loadReorderAlertCount();
-  }, [loadParts, loadVendors, loadReorderAlertCount]);
+  };
 
   const openEditModal = async (part: PartWithInventory) => {
     setEditingPart(part);
@@ -159,22 +163,22 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
       description: part.description || '',
       manufacturer: part.manufacturer || '',
       category: part.category || '',
-      quantity_on_hand: part.quantity_on_hand,
-      reorder_level: part.reorder_level,
-      unit_price: part.unit_price,
+      quantity_on_hand: part.quantity_on_hand ?? 0,
+      reorder_level: part.reorder_level ?? 0,
+      unit_price: part.unit_price ?? 0,
       location: part.location || '',
-      warranty_period_months: part.warranty_period_months,
+      warranty_period_months: part.warranty_period_months || 0,
       is_serialized: part.is_serialized || false,
       default_warranty_months: part.default_warranty_months || 12,
       vendor_part_number: part.vendor_part_number || '',
       reorder_point: part.reorder_point || 0,
       reorder_quantity: part.reorder_quantity || 0,
-      item_type: part.item_type || itemType,
+      item_type: (part.item_type || itemType) as ItemType,
       is_returnable: part.is_returnable || false,
       tool_category: part.tool_category || '',
       asset_tag: part.asset_tag || '',
-      requires_registration: (part as unknown as { requires_registration?: boolean }).requires_registration || false,
-      registration_url: (part as unknown as { registration_url?: string }).registration_url || '',
+      requires_registration: part.requires_registration || false,
+      registration_url: part.registration_url || '',
     });
 
     // Load existing vendor mapping
@@ -313,13 +317,13 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
     return matchesSearch && matchesCategory;
   });
 
-  const lowStockParts = parts.filter((p) => p.quantity_on_hand <= p.reorder_level);
-  const totalValue = parts.reduce((sum, p) => sum + p.quantity_on_hand * p.unit_price, 0);
+  const lowStockParts = parts.filter((p) => (p.quantity_on_hand ?? 0) <= (p.reorder_level ?? 0));
+  const totalValue = parts.reduce((sum, p) => sum + (p.quantity_on_hand ?? 0) * (p.unit_price ?? 0), 0);
 
   const getStockStatus = (part: Part) => {
-    if (part.quantity_on_hand === 0) {
+    if ((part.quantity_on_hand ?? 0) === 0) {
       return { text: 'Out of Stock', class: 'badge badge-red' };
-    } else if (part.quantity_on_hand <= part.reorder_level) {
+    } else if ((part.quantity_on_hand ?? 0) <= (part.reorder_level ?? 0)) {
       return { text: 'Low Stock', class: 'badge badge-yellow' };
     } else {
       return { text: 'In Stock', class: 'badge badge-green' };
@@ -357,7 +361,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{itemLabelPlural} Inventory</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {isTool ? 'Track and manage tools and equipment' : 'Track and manage parts and supplies'}
+            {isTool ? 'Track and manage tools and equipment' : 'Track and manage HVAC parts and supplies'}
           </p>
         </div>
         {activeTab === 'inventory' && (
@@ -417,11 +421,17 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
           </div>
         </div>
 
-        <div className="card p-6">
+        <div
+          className={`card p-6 ${reorderAlertCount > 0 ? 'cursor-pointer hover:ring-2 hover:ring-red-400 transition-all' : ''}`}
+          onClick={() => reorderAlertCount > 0 && setShowLowStockModal(true)}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Low Stock Items</p>
               <p className="text-3xl font-bold text-red-600 mt-2">{reorderAlertCount}</p>
+              {reorderAlertCount > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click to view details</p>
+              )}
             </div>
             <div className="bg-red-100 dark:bg-red-900/20 text-red-600 p-3 rounded-lg">
               <AlertTriangle className="w-6 h-6" />
@@ -463,7 +473,7 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
             className="input md:w-64"
           >
             <option value="all">All Categories</option>
-            {categories.map((cat) => (
+            {categories.map((cat: string) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
@@ -549,18 +559,18 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
                       <td className="px-6 py-4">
                         <div>
                           <span className="font-medium text-gray-900 dark:text-white">
-                            {part.quantity_on_hand}
+                            {part.quantity_on_hand ?? 0}
                           </span>
-                          {part.quantity_on_hand <= part.reorder_level && (
+                          {(part.quantity_on_hand ?? 0) <= (part.reorder_level ?? 0) && (
                             <p className="text-xs text-red-600 mt-1">
-                              Reorder at: {part.reorder_level}
+                              Reorder at: {part.reorder_level ?? 0}
                             </p>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-gray-900 dark:text-white">
-                          ${part.unit_price.toFixed(2)}
+                          ${(part.unit_price ?? 0).toFixed(2)}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -617,22 +627,78 @@ export function PartsView({ itemType = 'part' }: PartsViewProps) {
         </div>
       </div>
 
-      {reorderAlertCount > 0 && (
-        <div className="card p-6 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <div className="flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-bold text-red-900 dark:text-red-200">Low Stock Alert</h3>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                {reorderAlertCount} {itemLabelPlural.toLowerCase()} need to be reordered
-              </p>
-              <div className="mt-3 space-y-1">
-                {lowStockParts.slice(0, 5).map((part) => (
-                  <p key={part.id} className="text-sm text-red-600 dark:text-red-400">
-                    {part.name} ({part.part_number}) - Only {part.quantity_on_hand} remaining
+      {/* Low Stock Alert Modal */}
+      {showLowStockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20">
+              <div className="flex items-center space-x-3">
+                <div className="bg-red-100 dark:bg-red-900/40 p-2 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-red-900 dark:text-red-100">Low Stock Alert</h2>
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    {lowStockParts.length} {itemLabelPlural.toLowerCase()} need to be reordered
                   </p>
-                ))}
+                </div>
               </div>
+              <button
+                onClick={() => setShowLowStockModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+                {lowStockParts.map((part) => {
+                  const status = getStockStatus(part);
+                  return (
+                    <div
+                      key={part.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {part.name}
+                          </span>
+                          <span className={status.class}>{status.text}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {part.part_number} • {part.manufacturer || 'No manufacturer'}
+                        </p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className="text-2xl font-bold text-red-600">
+                          {part.quantity_on_hand ?? 0}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Reorder at: {part.reorder_level ?? 0}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {lowStockParts.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No low stock items</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setShowLowStockModal(false)}
+                className="btn btn-outline w-full"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
