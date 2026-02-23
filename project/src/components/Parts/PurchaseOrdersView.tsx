@@ -261,54 +261,9 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
 
       if (linesError) throw linesError;
 
-      // Update any linked parts requests to 'ordered' status using the RPC function
-      // This handles both the linkedRequest flow and individual line items with linked_request_id
-      const linkedRequestIds = new Set<string>();
-
-      // Add from linkedRequest prop if present
-      if (linkedRequest) {
-        linkedRequestIds.add(linkedRequest.request_id);
-      }
-
-      // Add from individual line items
-      lineItems.forEach(item => {
-        if (item.linked_request_id) {
-          linkedRequestIds.add(item.linked_request_id);
-        }
-      });
-
-      // Use the RPC function to link PO to parts requests (bypasses RLS)
-      for (const requestId of linkedRequestIds) {
-        // Build line mappings for this request
-        const lineMappings = lineItemsToInsert
-          .filter((_, index) => lineItems[index].linked_request_id === requestId)
-          .map((line, index) => ({
-            po_line_id: line.part_id, // We don't have actual line IDs yet
-            request_line_id: lineItems[index].request_line_id || null
-          }));
-
-        const { error: linkError } = await supabase.rpc('fn_link_po_to_parts_request', {
-          p_po_id: poData.id,
-          p_request_id: requestId,
-          p_line_mappings: lineMappings
-        });
-
-        if (linkError) {
-          console.error('Error linking PO to parts request:', linkError);
-          // Fallback: try direct update
-          const { error: updateError } = await supabase
-            .from('ticket_parts_requests')
-            .update({
-              po_id: poData.id,
-              status: 'ordered',
-            })
-            .eq('id', requestId);
-
-          if (updateError) {
-            console.error('Fallback update also failed:', updateError);
-          }
-        }
-      }
+      // Note: The database trigger trg_auto_link_po_to_parts_request automatically
+      // updates ticket_parts_requests to 'ordered' status when PO lines are inserted
+      // with linked_request_id. No frontend update needed here.
 
       // Clear the linked request if using that flow
       if (linkedRequest && onClearLinkedRequest) {
@@ -345,42 +300,30 @@ export function PurchaseOrdersView({ itemType = 'part', linkedRequest, onClearLi
 
       if (error) throw error;
 
-      // When PO is submitted or approved, update any linked parts requests to 'ordered'
+      // Note: The database trigger trg_auto_link_po_to_parts_request handles
+      // updating parts request status to 'ordered' when PO lines are inserted.
+      // For status changes on existing POs, we update any linked requests here.
       if (newStatus === 'submitted' || newStatus === 'approved') {
-        // Find PO lines with linked requests
+        // Find PO lines with linked requests and update them
         const { data: poLines } = await supabase
           .from('purchase_order_lines')
-          .select('id, linked_request_id')
+          .select('linked_request_id')
           .eq('po_id', poId)
           .not('linked_request_id', 'is', null);
 
         if (poLines && poLines.length > 0) {
           const requestIds = [...new Set(poLines.map(line => line.linked_request_id).filter(Boolean))];
 
+          // Update all linked parts requests to 'ordered'
           for (const requestId of requestIds) {
-            // Build line mappings
-            const lineMappings = poLines
-              .filter(line => line.linked_request_id === requestId)
-              .map(line => ({ po_line_id: line.id, request_line_id: null }));
-
-            // Use RPC function to link (bypasses RLS)
-            const { error: linkError } = await supabase.rpc('fn_link_po_to_parts_request', {
-              p_po_id: poId,
-              p_request_id: requestId,
-              p_line_mappings: lineMappings
-            });
-
-            if (linkError) {
-              console.error('Error linking PO to parts request via RPC:', linkError);
-              // Fallback to direct update
-              await supabase
-                .from('ticket_parts_requests')
-                .update({
-                  status: 'ordered',
-                  po_id: poId
-                })
-                .eq('id', requestId);
-            }
+            await supabase
+              .from('ticket_parts_requests')
+              .update({
+                status: 'ordered',
+                po_id: poId
+              })
+              .eq('id', requestId)
+              .eq('status', 'open'); // Only update if still open
           }
         }
       }
