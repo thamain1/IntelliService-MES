@@ -171,7 +171,7 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
               movement_type: 'receipt',
               quantity: receivingItem.quantity_received,
               to_location_id: receivingItem.stock_location_id,
-              unit_cost: line.unit_price,
+              po_id: purchaseOrderId,
               reference_type: 'purchase_order',
               reference_id: purchaseOrderId,
               notes: `Received from PO ${po?.po_number}`,
