@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Factory, Clock, Calendar, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -35,11 +35,7 @@ export function WorkCenterModal({
     ideal_cycle_time_seconds: null as number | null,
   });
 
-  useEffect(() => {
-    loadWorkCenter();
-  }, [workCenterId]);
-
-  const loadWorkCenter = async () => {
+  const loadWorkCenter = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -66,7 +62,11 @@ export function WorkCenterModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workCenterId]);
+
+  useEffect(() => {
+    loadWorkCenter();
+  }, [loadWorkCenter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

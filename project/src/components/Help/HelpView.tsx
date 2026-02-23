@@ -29,7 +29,6 @@ import {
   ClipboardList,
   Activity,
   Timer,
-  Shield,
   Boxes,
 } from 'lucide-react';
 
