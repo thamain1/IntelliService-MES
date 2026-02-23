@@ -162,53 +162,16 @@ export function ReceivingModal({ purchaseOrderId, onClose, onComplete }: Receivi
           return;
         }
 
-        // Update inventory for non-serialized parts using upsert
+        // Update inventory for non-serialized parts
         if (!part.is_serialized && receivingItem.quantity_received > 0) {
-          // First check if inventory record exists
-          const { data: existingInventory } = await supabase
-            .from('part_inventory')
-            .select('id, quantity')
-            .eq('part_id', line.part_id)
-            .eq('stock_location_id', receivingItem.stock_location_id)
-            .single();
+          // Use RPC function for atomic upsert to avoid race conditions
+          const { error: inventoryError } = await supabase.rpc('fn_upsert_part_inventory', {
+            p_part_id: line.part_id,
+            p_location_id: receivingItem.stock_location_id,
+            p_quantity_change: receivingItem.quantity_received,
+          });
 
-          if (existingInventory) {
-            // Update existing record
-            const { error: updateError } = await supabase
-              .from('part_inventory')
-              .update({
-                quantity: existingInventory.quantity + receivingItem.quantity_received,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', existingInventory.id);
-
-            if (updateError) throw updateError;
-          } else {
-            // Insert new record
-            const { error: insertError } = await supabase
-              .from('part_inventory')
-              .insert({
-                part_id: line.part_id,
-                stock_location_id: receivingItem.stock_location_id,
-                quantity: receivingItem.quantity_received,
-              });
-
-            if (insertError) throw insertError;
-          }
-
-          // Also record the movement for audit trail
-          await supabase
-            .from('inventory_movements')
-            .insert({
-              part_id: line.part_id,
-              movement_type: 'receipt',
-              quantity: receivingItem.quantity_received,
-              to_location_id: receivingItem.stock_location_id,
-              po_id: purchaseOrderId,
-              reference_type: 'purchase_order',
-              reference_id: purchaseOrderId,
-              notes: `Received from PO ${po?.po_number}`,
-            });
+          if (inventoryError) throw inventoryError;
         }
 
         if (part.is_serialized) {
