@@ -81,25 +81,16 @@ export function CompanySettings() {
       setSaving(true);
       setMessage(null);
 
-      // Upsert all settings
-      for (const [key, value] of Object.entries(settings)) {
-        const { data: existing } = await supabase
-          .from('accounting_settings')
-          .select('id')
-          .eq('setting_key', key)
-          .maybeSingle();
+      const upsertData = Object.entries(settings).map(([key, value]) => ({
+        setting_key: key,
+        setting_value: value,
+      }));
 
-        if (existing) {
-          await supabase
-            .from('accounting_settings')
-            .update({ setting_value: value })
-            .eq('setting_key', key);
-        } else {
-          await supabase
-            .from('accounting_settings')
-            .insert({ setting_key: key, setting_value: value });
-        }
-      }
+      const { error } = await supabase
+        .from('accounting_settings')
+        .upsert(upsertData, { onConflict: 'setting_key' });
+
+      if (error) throw error;
 
       refreshCompany();
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
