@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Building, Mail, Phone, FileText, Save, Upload, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useCompany } from '../../contexts/CompanyContext';
 
 interface CompanySettingsData {
   company_name: string;
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS: CompanySettingsData = {
 };
 
 export function CompanySettings() {
+  const { refresh: refreshCompany } = useCompany();
   const [settings, setSettings] = useState<CompanySettingsData>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,6 +101,7 @@ export function CompanySettings() {
         }
       }
 
+      refreshCompany();
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error) {
       console.error('Error saving settings:', error);

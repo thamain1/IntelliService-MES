@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { CompanyProvider } from './contexts/CompanyContext';
 import { LoginForm } from './components/Auth/LoginForm';
 import { EstimatePortalView } from './components/Estimates/EstimatePortalView';
 import { SidebarNew } from './components/Layout/SidebarNew';
@@ -354,7 +355,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <CompanyProvider>
+        <AppContent />
+      </CompanyProvider>
     </AuthProvider>
   );
 }

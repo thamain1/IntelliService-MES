@@ -9,6 +9,7 @@ import {
   PanelLeft,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompany } from '../../contexts/CompanyContext';
 import { navigationConfig, NavigationItem, NavigationGroup } from '../../config/navigationConfig';
 import { FeatureGuard } from '../common/FeatureGuard';
 
@@ -21,6 +22,7 @@ interface SidebarNewProps {
 
 export function SidebarNew({ currentView, onViewChange, isCollapsed: controlledCollapsed, onCollapseChange }: SidebarNewProps) {
   const { profile, signOut } = useAuth();
+  const { companyName, companyLogoUrl } = useCompany();
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -220,14 +222,14 @@ export function SidebarNew({ currentView, onViewChange, isCollapsed: controlledC
         <div className="flex items-center justify-center">
           {isCollapsed ? (
             <img
-              src="/image.png"
-              alt="Dunaway Logo"
+              src={companyLogoUrl || '/image.png'}
+              alt={companyName}
               className="h-10 w-10 object-contain"
             />
           ) : (
             <img
-              src="/image.png"
-              alt="Dunaway Logo"
+              src={companyLogoUrl || '/image.png'}
+              alt={companyName}
               className="h-16 w-auto object-contain"
             />
           )}
