@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Calendar, FileText, X, Filter, AlertCircle, Wallet, Download } from 'lucide-react';
 import { ExportService, ExportFormat } from '../../services/ExportService';
+import { useCompany } from '../../contexts/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { LaborRatesSettings } from './LaborRatesSettings';
 import { ReconciliationSession } from './ReconciliationSession';
@@ -97,6 +98,7 @@ interface AccountingViewProps {
 }
 
 export function AccountingView({ initialView = 'dashboard' }: AccountingViewProps) {
+  const { companyName } = useCompany();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'journal' | 'reports' | 'settings' | 'reconciliations'>('dashboard');
   const [glAccounts, setGlAccounts] = useState<GLAccount[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
@@ -1249,7 +1251,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
           {selectedReport === 'balance-sheet' && (
             <div className="card p-6">
               <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Dunaway Heating & Cooling</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{companyName}</h3>
                 <p className="text-gray-600 dark:text-gray-400">Balance Sheet</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">As of {new Date().toLocaleDateString()}</p>
               </div>
@@ -1322,7 +1324,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
           {selectedReport === 'income-statement' && (
             <div className="card p-6">
               <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Dunaway Heating & Cooling</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{companyName}</h3>
                 <p className="text-gray-600 dark:text-gray-400">Income Statement</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">For the period ending {new Date().toLocaleDateString()}</p>
               </div>
@@ -1382,7 +1384,7 @@ export function AccountingView({ initialView = 'dashboard' }: AccountingViewProp
           {selectedReport === 'trial-balance' && (
             <div className="card p-6">
               <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Dunaway Heating & Cooling</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{companyName}</h3>
                 <p className="text-gray-600 dark:text-gray-400">Trial Balance</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">As of {new Date().toLocaleDateString()}</p>
               </div>

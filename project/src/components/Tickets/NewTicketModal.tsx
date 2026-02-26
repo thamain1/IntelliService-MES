@@ -36,9 +36,6 @@ interface TicketInsertData {
   site_contact_name?: string;
   site_contact_phone?: string;
   problem_code?: string;
-  ahs_dispatch_number?: string;
-  ahs_diagnosis_fee_amount?: number;
-  ahs_labor_rate_per_hour?: number;
   service_contract_id?: string;
 }
 

@@ -325,7 +325,7 @@ function AppContent() {
           </button>
           <img
             src="/image.png"
-            alt="Dunaway Logo"
+            alt="IntelliService MES"
             className="h-12 w-auto object-contain"
           />
           <button

@@ -43,7 +43,7 @@ export function LoginForm() {
           <div className="flex flex-col items-center mb-8">
             <img
               src="/image.png"
-              alt="Dunaway Logo"
+              alt="IntelliService MES"
               className="h-32 w-auto object-contain mb-4"
             />
             <p className="text-gray-600 dark:text-gray-400 text-center">

@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Calendar, Download, RefreshCw, AlertCircle } from 'lucide-react';
 import { CashFlowService, CashFlowStatement } from '../../services/CashFlowService';
+import { useCompany } from '../../contexts/CompanyContext';
 
 interface CashFlowReportViewProps {
   onExportPDF?: () => void;
 }
 
 export function CashFlowReportView({ onExportPDF }: CashFlowReportViewProps) {
+  const { companyName } = useCompany();
   const [loading, setLoading] = useState(true);
   const [statement, setStatement] = useState<CashFlowStatement | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -138,7 +140,7 @@ export function CashFlowReportView({ onExportPDF }: CashFlowReportViewProps) {
       <div className="card p-8">
         <div className="text-center mb-8">
           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Dunaway Heating & Cooling
+            {companyName}
           </h3>
           <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Cash Flow Statement</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
