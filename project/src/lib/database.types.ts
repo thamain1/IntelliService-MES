@@ -2151,6 +2151,33 @@ export type Database = {
           },
         ]
       }
+      customer_photos: {
+        Row: {
+          id: string
+          customer_id: string
+          uploaded_by: string
+          photo_url: string
+          caption: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          customer_id: string
+          uploaded_by: string
+          photo_url: string
+          caption?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          customer_id?: string
+          uploaded_by?: string
+          photo_url?: string
+          caption?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           account_number: string | null

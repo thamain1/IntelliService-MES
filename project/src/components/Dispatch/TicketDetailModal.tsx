@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Clock, User, Calendar, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle, FileText, XCircle } from 'lucide-react';
+import { X, Clock, User, Calendar, Wrench, AlertCircle, Plus, Trash2, UserPlus, Pause, Package, Play, Tag, TrendingUp, AlertTriangle, FileText, XCircle, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CodeSelector } from '../CRM/CodeSelector';
 import { checkForConflicts, type ConflictingTicket } from '../../services/ScheduleConflictService';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Database } from '../../lib/database.types';
 
 type ServiceContract = Database['public']['Tables']['service_contracts']['Row'];
+type TicketPhoto = Database['public']['Tables']['ticket_photos']['Row'];
 
 type Ticket = Database['public']['Tables']['tickets']['Row'] & {
   customers?: { name: string; phone: string; address: string; city: string; state: string };
@@ -54,6 +56,7 @@ interface TicketDetailModalProps {
 }
 
 export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: TicketDetailModalProps) {
+  const { profile } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,10 +100,27 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
   const [plannedParts, setPlannedParts] = useState<PlannedPart[]>([]);
   const [plannedLabor, setPlannedLabor] = useState<PlannedLabor[]>([]);
 
+  // Photo state
+  const [ticketPhotos, setTicketPhotos] = useState<TicketPhoto[]>([]);
+  const [showPhotoForm, setShowPhotoForm] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [photoCaption, setPhotoCaption] = useState('');
+  const [photoType, setPhotoType] = useState('during');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   // Service Contract state
   const [serviceContractId, setServiceContractId] = useState<string | null>(null);
   const [customerContracts, setCustomerContracts] = useState<ServiceContract[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
+
+  const loadTicketPhotos = useCallback(async () => {
+    const { data } = await supabase
+      .from('ticket_photos')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: false });
+    setTicketPhotos(data ?? []);
+  }, [ticketId]);
 
   // Load customer contracts - must be defined before loadTicket which uses it
   const loadCustomerContracts = useCallback(async (customerId: string) => {
@@ -212,8 +232,9 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
       loadTicket();
       loadAssignments();
       loadTechnicians();
+      loadTicketPhotos();
     }
-  }, [isOpen, ticketId, loadTicket, loadAssignments]);
+  }, [isOpen, ticketId, loadTicket, loadAssignments, loadTicketPhotos]);
 
   const handleAddAssignment = async (skipConflictCheck = false) => {
     if (!newAssignment.technician_id) {
@@ -531,6 +552,70 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleTicketPhotoUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      alert('Please select a photo to upload');
+      return;
+    }
+    if (!profile?.id) {
+      alert('You must be logged in to upload photos');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${ticketId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('ticket-photos')
+        .upload(fileName, selectedFile, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('ticket-photos')
+        .getPublicUrl(fileName);
+
+      const validPhotoTypes = ['before', 'during', 'after', 'issue', 'equipment', 'other'];
+      const safePhotoType = validPhotoTypes.includes(photoType) ? photoType : 'during';
+
+      const { error: insertError } = await supabase.from('ticket_photos').insert([{
+        ticket_id: ticketId,
+        uploaded_by: profile.id,
+        photo_url: urlData.publicUrl,
+        photo_type: safePhotoType,
+        caption: photoCaption || null,
+      }]);
+
+      if (insertError) throw insertError;
+
+      await loadTicketPhotos();
+      setShowPhotoForm(false);
+      setSelectedFile(null);
+      setPhotoCaption('');
+      setPhotoType('during');
+    } catch (error: unknown) {
+      console.error('Error uploading photo:', error);
+      alert(`Failed to upload photo: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const getPhotoBadgeColor = (type: string | null) => {
+    const styles: Record<string, string> = {
+      before:    'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+      during:    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+      after:     'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+      issue:     'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+      equipment: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+      other:     'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    };
+    return styles[type ?? 'other'] ?? styles.other;
   };
 
   const getStatusColor = (status: string) => {
@@ -976,6 +1061,112 @@ export function TicketDetailModal({ isOpen, onClose, ticketId, onUpdate }: Ticke
                 </div>
               </div>
             )}
+
+            {/* Photos Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                  <Camera className="w-4 h-4 mr-2" />
+                  Photos ({ticketPhotos.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoForm(!showPhotoForm)}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Photo
+                </button>
+              </div>
+
+              {showPhotoForm && (
+                <form onSubmit={handleTicketPhotoUpload} className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Photo *</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                      className="block w-full text-sm text-gray-700 dark:text-gray-300"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+                    <select
+                      value={photoType}
+                      onChange={(e) => setPhotoType(e.target.value)}
+                      className="input text-sm"
+                    >
+                      <option value="before">Before</option>
+                      <option value="during">During</option>
+                      <option value="after">After</option>
+                      <option value="issue">Issue</option>
+                      <option value="equipment">Equipment</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Caption</label>
+                    <input
+                      type="text"
+                      value={photoCaption}
+                      onChange={(e) => setPhotoCaption(e.target.value)}
+                      className="input text-sm"
+                      placeholder="Optional caption"
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      type="submit"
+                      disabled={uploadingPhoto}
+                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                    >
+                      {uploadingPhoto ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                          Uploading...
+                        </>
+                      ) : 'Upload'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPhotoForm(false); setSelectedFile(null); setPhotoCaption(''); setPhotoType('during'); }}
+                      className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {ticketPhotos.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {ticketPhotos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="group relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
+                      onClick={() => window.open(photo.photo_url, '_blank')}
+                    >
+                      <div className="aspect-square bg-gray-100 dark:bg-gray-700">
+                        <img
+                          src={photo.photo_url}
+                          alt={photo.caption ?? `${photo.photo_type} photo`}
+                          className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                        />
+                      </div>
+                      <span className={`absolute top-1 left-1 text-xs font-medium px-1.5 py-0.5 rounded capitalize ${getPhotoBadgeColor(photo.photo_type)}`}>
+                        {photo.photo_type ?? 'other'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                !showPhotoForm && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No photos yet</p>
+                )
+              )}
+            </div>
 
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
