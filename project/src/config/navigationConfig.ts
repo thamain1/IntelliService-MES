@@ -67,10 +67,10 @@ export interface NavigationGroup {
 
 // Role shorthand arrays for readability
 const ADMIN_ONLY = ['admin'];
-const ADMIN_OPS = ['admin', 'dispatcher', 'office_manager', 'supervisor'];
+const ADMIN_OPS = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'lead_tech'];
 const ALL_FIELD = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'lead_tech', 'technician'];
-const FINANCE_ROLES = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'accounting'];
-const PARTS_ROLES = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'material_handler'];
+const FINANCE_ROLES = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'lead_tech', 'accounting'];
+const PARTS_ROLES = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'lead_tech', 'material_handler'];
 const PARTS_ALL = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'lead_tech', 'technician', 'material_handler'];
 const ALL_ROLES = ['admin', 'dispatcher', 'office_manager', 'supervisor', 'lead_tech', 'technician', 'accounting', 'material_handler'];
 
