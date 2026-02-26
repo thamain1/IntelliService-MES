@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { Clock, LogIn, LogOut, User, CheckCircle, XCircle, MapPin, MapPinOff } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Clock, LogIn, LogOut, User, CheckCircle, XCircle, MapPin, MapPinOff, Pencil, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { GeolocationService, GeolocationPosition } from '../../services/GeolocationService';
@@ -29,11 +29,21 @@ export function TimeClockView() {
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'dispatcher';
 
+  // Admin edit state
+  const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
+  const [editClockIn, setEditClockIn] = useState('');
+  const [editClockOut, setEditClockOut] = useState('');
+  const [editTimeType, setEditTimeType] = useState('regular');
+  const [editBreakDuration, setEditBreakDuration] = useState('0');
+  const [editNotes, setEditNotes] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // 15-minute interval for location updates (900000ms)
   const LOCATION_UPDATE_INTERVAL = 15 * 60 * 1000;
 
   // Start location sharing with 15-minute intervals
-  const startLocationSharing = useCallback(async () => {
+  const startLocationSharing = async () => {
     if (!profile || locationSharingStarted.current) return;
 
     setLocationError(null);
@@ -59,7 +69,7 @@ export function TimeClockView() {
       setIsLocationSharing(true);
       console.log('[TimeClockView] Location sharing started with 15-minute interval');
     }
-  }, [profile, LOCATION_UPDATE_INTERVAL]);
+  };
 
   // Stop location sharing
   const stopLocationSharing = () => {
@@ -70,7 +80,37 @@ export function TimeClockView() {
     console.log('[TimeClockView] Location sharing stopped');
   };
 
-  const loadTimeLogs = useCallback(async () => {
+  useEffect(() => {
+    loadTimeLogs();
+    checkActiveLog();
+
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterDate, showAllUsers]);
+
+  // Auto-resume location sharing if already clocked in
+  useEffect(() => {
+    if (activeLog && profile && !locationSharingStarted.current) {
+      console.log('[TimeClockView] Already clocked in, auto-resuming location sharing');
+      startLocationSharing();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLog, profile]);
+
+  // Cleanup location sharing on unmount
+  useEffect(() => {
+    return () => {
+      if (locationSharingStarted.current) {
+        stopLocationSharing();
+      }
+    };
+  }, []);
+
+  const loadTimeLogs = async () => {
     try {
       let query = supabase
         .from('time_logs')
@@ -92,9 +132,9 @@ export function TimeClockView() {
     } finally {
       setLoading(false);
     }
-  }, [filterDate, showAllUsers, profile]);
+  };
 
-  const checkActiveLog = useCallback(async () => {
+  const checkActiveLog = async () => {
     if (!profile) return;
 
     try {
@@ -112,26 +152,7 @@ export function TimeClockView() {
     } catch (error) {
       console.error('Error checking active log:', error);
     }
-  }, [profile]);
-
-  useEffect(() => {
-    loadTimeLogs();
-    checkActiveLog();
-
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [loadTimeLogs, checkActiveLog]);
-
-  // Auto-resume location sharing if already clocked in
-  useEffect(() => {
-    if (activeLog && profile && !locationSharingStarted.current) {
-      console.log('[TimeClockView] Already clocked in, auto-resuming location sharing');
-      startLocationSharing();
-    }
-  }, [activeLog, profile, startLocationSharing]);
+  };
 
   const handleClockIn = async () => {
     if (!profile || clockActionLoading) return;
@@ -284,7 +305,64 @@ export function TimeClockView() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const toLocalDatetimeInput = (isoString: string) => {
+    const d = new Date(isoString);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${mo}-${day}T${h}:${min}`;
+  };
+
+  const openEditModal = (log: TimeLog) => {
+    setEditingLog(log);
+    setEditClockIn(toLocalDatetimeInput(log.clock_in_time));
+    setEditClockOut(log.clock_out_time ? toLocalDatetimeInput(log.clock_out_time) : '');
+    setEditTimeType(log.time_type ?? 'regular');
+    setEditBreakDuration(String(log.break_duration ?? 0));
+    setEditNotes(log.notes ?? '');
+    setEditStatus(log.status ?? 'completed');
+  };
+
+  const handleEditSave = async () => {
+    if (!editingLog || !editClockIn) return;
+    setSavingEdit(true);
+    try {
+      const clockIn = new Date(editClockIn);
+      const clockOut = editClockOut ? new Date(editClockOut) : null;
+      const breakMins = parseFloat(editBreakDuration) || 0;
+      let totalHours: number | null = null;
+      if (clockOut) {
+        const rawHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+        totalHours = Math.round((rawHours - breakMins / 60) * 100) / 100;
+      }
+
+      const { error } = await supabase
+        .from('time_logs')
+        .update({
+          clock_in_time: clockIn.toISOString(),
+          clock_out_time: clockOut?.toISOString() ?? null,
+          time_type: editTimeType as TimeLog['time_type'],
+          break_duration: breakMins || null,
+          notes: editNotes || null,
+          status: editStatus as TimeLog['status'],
+          total_hours: totalHours,
+        })
+        .eq('id', editingLog.id);
+
+      if (error) throw error;
+      setEditingLog(null);
+      await loadTimeLogs();
+    } catch (error: unknown) {
+      console.error('Error updating time log:', error);
+      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'active':
         return 'badge-green';
@@ -299,7 +377,7 @@ export function TimeClockView() {
     }
   };
 
-  const getTimeTypeColor = (type: string) => {
+  const getTimeTypeColor = (type: string | null) => {
     switch (type) {
       case 'regular':
         return 'text-blue-600';
@@ -327,6 +405,7 @@ export function TimeClockView() {
   }
 
   return (
+    <>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -609,7 +688,7 @@ export function TimeClockView() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-sm font-medium ${getTimeTypeColor(log.time_type)}`}>
-                        {log.time_type.replace('_', ' ')}
+                        {(log.time_type ?? 'work').replace('_', ' ')}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -628,24 +707,33 @@ export function TimeClockView() {
                     </td>
                     {isAdmin && (
                       <td className="px-6 py-4">
-                        {log.status === 'completed' && (
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => approveTimeLog(log.id)}
-                              className="btn btn-primary p-2"
-                              title="Approve"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => rejectTimeLog(log.id)}
-                              className="btn btn-outline p-2 text-red-600"
-                              title="Reject"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center space-x-2">
+                          {log.status === 'completed' && (
+                            <>
+                              <button
+                                onClick={() => approveTimeLog(log.id)}
+                                className="btn btn-primary p-2"
+                                title="Approve"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => rejectTimeLog(log.id)}
+                                className="btn btn-outline p-2 text-red-600"
+                                title="Reject"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => openEditModal(log)}
+                            className="btn btn-outline p-2 text-blue-600"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -667,5 +755,158 @@ export function TimeClockView() {
         )}
       </div>
     </div>
+
+    {/* Admin Edit Modal */}
+    {editingLog && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Edit Time Log</h2>
+            <button
+              onClick={() => setEditingLog(null)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {editingLog.profiles && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                <User className="w-4 h-4" />
+                <span>{editingLog.profiles.full_name}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Clock In *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editClockIn}
+                  onChange={(e) => setEditClockIn(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Clock Out
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editClockOut}
+                  onChange={(e) => setEditClockOut(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Time Type
+                  </label>
+                  <select
+                    value={editTimeType}
+                    onChange={(e) => setEditTimeType(e.target.value)}
+                    className="input"
+                  >
+                    <option value="regular">Regular</option>
+                    <option value="overtime">Overtime</option>
+                    <option value="travel">Travel</option>
+                    <option value="on_site">On Site</option>
+                    <option value="break">Break</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Break (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editBreakDuration}
+                    onChange={(e) => setEditBreakDuration(e.target.value)}
+                    className="input"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="input"
+                >
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="input resize-none"
+                  rows={2}
+                  placeholder="Optional notes..."
+                />
+              </div>
+            </div>
+
+            {editClockIn && editClockOut && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                Calculated total:{' '}
+                <strong>
+                  {formatDuration(
+                    Math.max(0,
+                      (new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / (1000 * 60 * 60)
+                      - (parseFloat(editBreakDuration) || 0) / 60
+                    )
+                  )}
+                </strong>
+              </div>
+            )}
+          </div>
+
+          <div className="flex space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={handleEditSave}
+              disabled={savingEdit || !editClockIn}
+              className="btn btn-primary flex-1 flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              {savingEdit ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+            <button
+              onClick={() => setEditingLog(null)}
+              className="btn btn-outline"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
